@@ -121,7 +121,6 @@ function string.explode(str , seperator , plain)
 end
 
 function getName(Data, pretty)
-  -- try your original Hadar/Hadars prefix (case-insensitive)
   local name = Data:match('%s+[Nn][Aa][Mm][Ee]="[Hh][Aa][Dd][Aa][Rr][Ss]?_([%w_]+)"')
   if not name then
     -- fallback: accept any name="..." and take the part after the last underscore if present
@@ -192,14 +191,14 @@ function EPMCheck()
                          if tonumber(EPMVar["cache"][num]["GHVersion"]) == nil then
                               ColourNote("Red","","EPM: Something Went Wrong Github Version number not cached, please run command again")
                               if EPMVar["Debug"] == "yes" then
-                                   ColourNote("Red","","EPM: If in Debug, you will see a table, copy and paste to hadar via personal note or mb.aardwolfboot.com: with this message GHVersion == nil "..num)
+                                   ColourNote("Red","","EPM: If in Debug, you will see a table, copy and paste to Kelaire via personal note or mb.aardwolfboot.com: with this message GHVersion == nil "..num)
                                    tprint(EPMVar["cache"])
                               end
                               return
                          elseif tonumber(EPMVar["cache"][num]["LocalVersion"]) == nil then
                               ColourNote("Red","","EPM: Something Went Wrong Local Version number not cached, please run command again")
                               if EPMVar["Debug"] == "yes" then
-                                   ColourNote("Red","","EPM: If in Debug, you will see a table, copy and paste to hadar via personal note or mb.aardwolfboot.com: with this message local == nil "..num)
+                                   ColourNote("Red","","EPM: If in Debug, you will see a table, copy and paste to Kelaire via personal note or mb.aardwolfboot.com: with this message local == nil "..num)
                                    tprint(EPMVar["cache"])
                               end
                               return
@@ -213,9 +212,9 @@ function EPMCheck()
                          Hyperlink("epm remove "..num, "[Remove Plugin]", "Remove plugin", "Red", "black", 0, 1)
                
                          if tonumber(EPMVar["cache"][num]["LocalVersion"]) >= tonumber(EPMVar["cache"][num]["GHVersion"]) then
-                              ColourNote("Red","","EPM: **PLUGIN UP TO DATE**")
+                              ColourNote("Green","","  **PLUGIN UP TO DATE**")
                          else --keep this else in, to force a pagebreak between 2 plugins that need to be updated or else they will be on same line
-                              ColourNote("Red","","EPM: ")
+                              ColourNote("Red",""," ")
                          end
                     else
                          Hyperlink("epm install "..num, "[Install Plugin]", "Install Plugin", "DarkOrange", "black", 0, 1)
@@ -254,7 +253,7 @@ function EPMUpdate(PID)
      if tonumber(EPMVar["cache"][script_id]["LocalVersion"]) == nil or tonumber(EPMVar["cache"][script_id]["GHVersion"]) == nil then
           ColourNote("Red","","EPM: Something went wrong while caching, please run EPM check again")
           if EPMVar["Debug"] == "yes" then
-               ColourNote("Red","","EPM: If in Debug, you will see a table, copy and paste to hadar via personal note or mb.aardwolfboot.com: with this message epm update == nil"..script_id)
+               ColourNote("Red","","EPM: If in Debug, you will see a table, copy and paste to Kelaire via personal note or mb.aardwolfboot.com: with this message epm update == nil"..script_id)
                tprint(EPMVar["cache"])
           end
           return
@@ -421,9 +420,13 @@ end
 
 function buildCache()
      cache_Len = tablelength(rawPluginUrl)
-     ColourNote("Red","","EPM: BuildCache().cache_Len: ("..cache_Len..")")
+	 if EPMVar["Debug"] == "yes" then
+       ColourNote("Red","","EPM: BuildCache().cache_Len: ("..cache_Len..")")
+	 end
      cache_res = 0
-     ColourNote("Red","","EPM: BuildCache().cache_res: ("..cache_res..")")
+	 if EPMVar["Debug"] == "yes" then
+       ColourNote("Red","","EPM: BuildCache().cache_res: ("..cache_res..")")
+	 end
      EPMVar["cache"] = {}
      EPMVar["Initialized"]="no"
      
@@ -449,11 +452,15 @@ function raw_get_cache(retval, page, status, headers, full_status, request_url)
 
 
      cache_res = cache_res + 1
-     ColourNote("Red","","EPM: raw_get_cache().cache_res: ("..cache_res..")")
-     ColourNote("Red","","EPM: ----------------")
-     if status~= nil then ColourNote("Red","","EPM: Status:"..status) else ColourNote("Red","","EPM: Status:NIL") end
+	 if EPMVar["Debug"] == "yes" then
+       ColourNote("Red","","EPM: raw_get_cache().cache_res: ("..cache_res..")")
+	   ColourNote("Red","","EPM: ----------------")
+	 end
+	 if EPMVar["Debug"] == "yes" then
+       if status~= nil then ColourNote("Red","","EPM: Status:"..status) else ColourNote("Red","","EPM: Status:NIL") end
+	 end
      
-     iif status == 200 then
+     if status == 200 then
 	  -- WName: from page, else from URL, else "UNKNOWN"
 	  WName = getName(page, false)
 	  if not WName and request_url then
@@ -463,28 +470,40 @@ function raw_get_cache(retval, page, status, headers, full_status, request_url)
 		end
 	  end
 	  WName = WName or "UNKNOWN"
-	  ColourNote("Red","","EPM: set wname:"..tostring(WName))
+	  if EPMVar["Debug"] == "yes" then
+	    ColourNote("Red","","EPM: set wname:"..tostring(WName))
+	  end
 
 	  -- rawname: from page, else fall back to WName
 	  rawname = page:match('%s+[Nn][Aa][Mm][Ee]="([%w_]+)"') or WName
-	  ColourNote("Red","","EPM: set rawname:"..tostring(rawname))
+	  if EPMVar["Debug"] == "yes" then
+	    ColourNote("Red","","EPM: set rawname:"..tostring(rawname))
+	  end
 
 	  -- version: accept any digits & dots; default "0"
 	  ghVersion = page:match('%s+[Vv][Ee][Rr][Ss][Ii][Oo][Nn]="([%d%.]+)"') or "0"
-	  ColourNote("Red","","EPM: set github version:"..tostring(ghVersion))
+	  if EPMVar["Debug"] == "yes" then
+	    ColourNote("Red","","EPM: set github version:"..tostring(ghVersion))
+	  end
 
 	  -- plugin id: allow hyphens too; default empty
 	  pid = page:match('%s+[Ii][Dd]="([%w%-]+)"') or ""
-	  ColourNote("Red","","EPM: set plugin id:"..tostring(pid))
+	  if EPMVar["Debug"] == "yes" then
+	    ColourNote("Red","","EPM: set plugin id:"..tostring(pid))
+	  end
 
 	  -- local version: only query if we have a pid
 	  lVersion = (pid ~= "" and GetPluginInfo(pid,19)) or 0
-	  ColourNote("Red","","EPM: set local version:"..tostring(lVersion))
+	  if EPMVar["Debug"] == "yes" then
+	    ColourNote("Red","","EPM: set local version:"..tostring(lVersion))
+	  end
 
 	  -- long name: safe fallback even if rawname is nil
 	  local longNameFallback = (GetInfo and GetInfo(60) or "") .. (rawname or "plugin") .. ".xml"
 	  lname = (pid ~= "" and GetPluginInfo(pid,6)) or longNameFallback
-	  ColourNote("Red","","EPM: set long name:"..tostring(lname))
+	  if EPMVar["Debug"] == "yes" then
+	    ColourNote("Red","","EPM: set long name:"..tostring(lname))
+	  end
 
 	  -- ensure the cache bucket exists before we write
 	  EPMVar["cache"][cache_res] = EPMVar["cache"][cache_res] or {}
@@ -496,8 +515,10 @@ function raw_get_cache(retval, page, status, headers, full_status, request_url)
      end
      
    
-     if cache_res >= cache_Len then   
-          ColourNote("Red","","EPM: Fired(1) Cache_Res("..cache_res..") >= cache_Len("..cache_Len..")")   
+     if cache_res >= cache_Len then 
+		  if EPMVar["Debug"] == "yes" then
+            ColourNote("Red","","EPM: Fired(1) Cache_Res("..cache_res..") >= cache_Len("..cache_Len..")")   
+		  end
           EPMVar["cache"][cache_res]["ShortName"] = WName
           EPMVar["cache"][cache_res]["RawName"] = rawname
           EPMVar["cache"][cache_res]["GHVersion"] = ghVersion
@@ -512,7 +533,9 @@ function raw_get_cache(retval, page, status, headers, full_status, request_url)
                EPMCheck()
           end
      else
-          ColourNote("Red","","EPM: Fired(2) Cache_Res("..cache_res..") < cache_Len("..cache_Len..")")   
+	      if EPMVar["Debug"] == "yes" then
+            ColourNote("Red","","EPM: Fired(2) Cache_Res("..cache_res..") < cache_Len("..cache_Len..")")   
+		  end
           EPMVar["cache"][cache_res]["ShortName"] = WName
           EPMVar["cache"][cache_res]["RawName"] = rawname
           EPMVar["cache"][cache_res]["GHVersion"] = ghVersion
@@ -522,7 +545,9 @@ function raw_get_cache(retval, page, status, headers, full_status, request_url)
           EPMVar["cache"][cache_res]["url"] = request_url
      
      end -- end counting if
-     ColourNote("Red","","EPM: ----------------")
+	 if EPMVar["Debug"] == "yes" then
+       ColourNote("Red","","EPM: ----------------")
+	 end
      
      
 end--end raw_get
@@ -535,7 +560,7 @@ https://github.com/AardCrowley/Aardwolf-Scripts
 ]]
 
 function EPMSelfUpdate()
-     raw = "https://raw.githubusercontent.com/zzyzzyzzx/Hadar/master/PluginManager/Hadar_Plugin_Manager.xml"
+     raw = "https://raw.githubusercontent.com/KelaireAard/epicplugins/refs/heads/main/epic_plugin_manager.xml"
      async_ok, async = pcall (require, "async")
      PLUGIN_VERSION  = GetPluginInfo(GetPluginID(), 19)
      PLUGIN_NAME   = GetPluginInfo(GetPluginID(), 1)
