@@ -1,0 +1,590 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE muclient>
+
+<muclient>
+<plugin
+   name="Epic_Plugin_Manager"
+   author="Kelaire"
+   id="386f7bc25fb805370ada4e76"
+   language="Lua"
+   purpose="Manage and maintain multiple scripts from github"
+   save_state="y"
+   date_written="2025-10-10 09:00:00"
+   requires="4.00"
+   version="1.00"
+   >
+
+</plugin>
+
+<!-- Alias
+<alias
+   script=""
+   match=""
+   enabled="y"
+   regexp="y"
+   group=""
+   sequence="100"
+  >
+  </alias>
+ -->
+
+<aliases>
+     <alias
+     script="pmMain"
+     match="^epm ?(.*)?$"
+     enabled="y"
+     regexp="y"
+     sequence="100"
+     >
+     </alias>
+     <alias match="^epm help$"
+        enabled="y"
+        sequence="100"
+        send_to="12"
+        regexp="y"
+        keep_evaluating="y"
+	>
+	<send>
+	    ShowHelp()
+	</send>
+	</alias>
+</aliases>
+
+
+
+<script>
+<![CDATA[
+require "serialize"
+require "tprint"
+require "aard_requirements"
+require "wait"
+local json = require("json")
+dofile(GetInfo(60) .. "aardwolf_colors.lua")
+
+local gitHubRaw = "https://raw.githubusercontent.com/KelaireAard/epicplugins/refs/heads/main/master/github.list"
+local rawPluginUrl
+
+function OnPluginSaveState()
+	SetVariable("EPMVar", "EPMVar = " .. serialize.save_simple(EPMVar))
+	SetVariable("EPMPastFirstInstall", "true")
+end 
+
+function OnPluginInstall()
+   	if GetVariable ("enabled") == "false" then
+		ColourNote ("yellow", "", "Warning: Plugin " .. GetPluginName() .. " is currently disabled.")
+		check (EnablePlugin(GetPluginID(), false))
+		return
+	end 
+
+    pluginfirstrun = "yes"
+  
+	OnPluginEnable()
+end
+
+function OnPluginEnable()
+    EPMVar = {}
+    EPMVar["cache"] = {}
+
+    if GetVariable ("EPMPastFirstInstall") == "true" then
+	  assert(loadstring(GetVariable("EPMVar") or "")) ()
+    else
+      EPMVar["Debug"] = "no"
+	end
+	
+    ColourNote("Red","","Installing "..GetPluginName().." version "..GetPluginInfo (GetPluginID (), 19).."...")
+	
+	ColourNote("Red","","EPM help will display the helpfile")
+     
+    makeRawUrl()
+    buildCache()
+end
+
+
+function string.explode(str , seperator , plain)
+  assert(type(seperator) == "string" and seperator ~= "" , "Invalid seperator (need string of length >= 1)")
+ 
+  local t , nexti = { } , 1
+  local pos = 1
+  while true do
+  local st , sp = str:find ( seperator , pos , plain )
+  if not st then break end -- No more seperators found
+    if pos ~= st then
+      t [ nexti ] = str:sub ( pos , st - 1 ) -- Attach chars left of current divider
+      nexti = nexti + 1
+    end
+  
+    pos = sp + 1 -- Jump past current divider
+  end
+  
+  t [ nexti ] = str:sub ( pos ) -- Attach chars right of last divider
+  return t
+end
+
+function getName(Data, pretty)
+  -- try your original Hadar/Hadars prefix (case-insensitive)
+  local name = Data:match('%s+[Nn][Aa][Mm][Ee]="[Hh][Aa][Dd][Aa][Rr][Ss]?_([%w_]+)"')
+  if not name then
+    -- fallback: accept any name="..." and take the part after the last underscore if present
+    local any = Data:match('%s+[Nn][Aa][Mm][Ee]="([^"]+)"')
+    if any then
+      name = any:match('([^_]+)$') or any  -- take last segment or whole
+    end
+  end
+  if not name then return nil end
+  if pretty then
+    name = name:gsub('_',' '):upper()
+  end
+  return name
+end
+
+
+function pmMain(n,l,wc)
+
+     local first, rest = wc[1]:match("(%w+)%s*(.*)")
+     
+     if first == nil then
+          ShowHelp()
+          return
+     end
+     
+     if first == "check" then
+          EPMVar["Initialized"]="no"
+          EPMCheck()
+     elseif first == "selfupdate" then
+          EPMSelfUpdate()
+     elseif first == "install" then
+          EPMInstall(rest)
+     elseif first == "update" then
+          EPMUpdate(rest)
+     elseif first == "remove" then
+          EPMremove(rest)
+     elseif first == "reload" then
+          EPMReload(rest)
+     elseif first == "help" then
+          ShowHelp()
+     elseif first == "show" then
+          tprint(EPMVar["cache"])
+     elseif first == "delcache" then
+          EPMVar["cache"] = {}
+     elseif first == "debug" then
+          if EPMVar["Debug"] == "no" then
+               EPMVar["Debug"] = "yes"
+               ColourNote("Red","","EPM: Debugging turned on")
+          else
+               ColourNote("Red","","EPM: Debugging turning off")
+               EPMVar["Debug"] = "no"
+          end
+     end
+     
+end
+
+function EPMCheck()
+     local script_short
+
+     if EPMVar["Initialized"]=="yes" then
+
+               ColourNote("Red","","+----------[List of maintained plugins]----------+")
+               for num,data in ipairs(EPMVar["cache"]) do 
+                    script_short = string.upper(string.gsub(data["ShortName"],"_"," "))
+                    ColourTell("Cyan", "", "[" .. num .. "] ", "SkyBlue", "", script_short .. " ")
+
+                    if IsPluginInstalled(EPMVar["cache"][num]["PluginId"]) then
+                         if tonumber(EPMVar["cache"][num]["GHVersion"]) == nil then
+                              ColourNote("Red","","EPM: Something Went Wrong Github Version number not cached, please run command again")
+                              if EPMVar["Debug"] == "yes" then
+                                   ColourNote("Red","","EPM: If in Debug, you will see a table, copy and paste to hadar via personal note or mb.aardwolfboot.com: with this message GHVersion == nil "..num)
+                                   tprint(EPMVar["cache"])
+                              end
+                              return
+                         elseif tonumber(EPMVar["cache"][num]["LocalVersion"]) == nil then
+                              ColourNote("Red","","EPM: Something Went Wrong Local Version number not cached, please run command again")
+                              if EPMVar["Debug"] == "yes" then
+                                   ColourNote("Red","","EPM: If in Debug, you will see a table, copy and paste to hadar via personal note or mb.aardwolfboot.com: with this message local == nil "..num)
+                                   tprint(EPMVar["cache"])
+                              end
+                              return
+                         end
+
+                         if tonumber(EPMVar["cache"][num]["LocalVersion"]) < tonumber(EPMVar["cache"][num]["GHVersion"]) then
+                              Hyperlink("epm update "..num, "[Update Plugin]", "Download and Update Plugin", "DarkOrange", "black", 0, 1)
+                         else
+                              Hyperlink("epm reload "..num, "[reload Plugin]", "Reload plugin", "Teal", "black", 0, 1)
+                         end
+                         Hyperlink("epm remove "..num, "[Remove Plugin]", "Remove plugin", "Red", "black", 0, 1)
+               
+                         if tonumber(EPMVar["cache"][num]["LocalVersion"]) >= tonumber(EPMVar["cache"][num]["GHVersion"]) then
+                              ColourNote("Red","","EPM: **PLUGIN UP TO DATE**")
+                         else --keep this else in, to force a pagebreak between 2 plugins that need to be updated or else they will be on same line
+                              ColourNote("Red","","EPM: ")
+                         end
+                    else
+                         Hyperlink("epm install "..num, "[Install Plugin]", "Install Plugin", "DarkOrange", "black", 0, 1)
+                         print("")
+                    end
+
+               end
+               ColourNote("Red","","+------------------------------------------------+")
+     else
+          makeRawUrl()
+          buildCache()
+     end
+end
+
+function EPMUpdate(PID)
+     local num, args = PID:match("(%d+)%s*(.*)")
+
+     if num ~= nil then
+          num = tonumber(num)
+     else
+          ColourNote("Red","","EPM: You need to supply a number, EG EPM update 1")
+          return;
+     end
+
+     if args ~= "" then
+          --do stuff with args here (maybe)
+     end
+
+     local script_id = num
+     local script_name = EPMVar["cache"][script_id]["LongName"]
+     local script_url = EPMVar["cache"][script_id]["url"]
+     local script_pid = EPMVar["cache"][script_id]["PluginId"]
+     local script_short = string.upper(string.gsub(EPMVar["cache"][script_id]["ShortName"],"_"," "))
+     local script_rawurl
+
+     if tonumber(EPMVar["cache"][script_id]["LocalVersion"]) == nil or tonumber(EPMVar["cache"][script_id]["GHVersion"]) == nil then
+          ColourNote("Red","","EPM: Something went wrong while caching, please run EPM check again")
+          if EPMVar["Debug"] == "yes" then
+               ColourNote("Red","","EPM: If in Debug, you will see a table, copy and paste to hadar via personal note or mb.aardwolfboot.com: with this message epm update == nil"..script_id)
+               tprint(EPMVar["cache"])
+          end
+          return
+     end
+
+     if tonumber(EPMVar["cache"][script_id]["LocalVersion"]) >= tonumber(EPMVar["cache"][script_id]["GHVersion"]) then
+          ColourNote("Red","","EPM: Plugin: "..script_short.." Already up to date, if need to reload use EPM reload "..num)
+          return
+     end
+     
+     ColourNote("Red","","EPM: Updating Plugin "..script_short)
+    
+     UnloadPlugin(script_pid)
+     
+     async_ok, async = pcall (require, "async")
+     if async_ok then
+          script_rawurl = async.request(script_url, "HTTPS")
+          retval, page, status, headers, full_status = script_rawurl:join()
+          
+          if status == 200 then
+               local lscript = io.open(script_name,"w")
+               lscript:write(page)
+               lscript:close()
+          end --end status 200
+     end --end async_ok
+     ColourNote("Red","","EPM: Plugin "..script_short.." Updated Enjoy!")
+     LoadPlugin(script_name)
+end
+
+function EPMInstall(PID)
+     local num, args = PID:match("(%d+)%s*(.*)")
+
+     if num ~= nil then
+          num = tonumber(num)
+     else
+          ColourNote("Red","","EPM: You need to supply a number, EG EPM install 1")
+          return;
+     end
+
+     if args ~= "" then
+          --do stuff with args here (maybe)
+     end
+
+     local script_id = num
+     local script_directory = GetInfo(60)
+     local script_name = EPMVar["cache"][script_id]["LongName"]
+     local script_url = EPMVar["cache"][script_id]["url"]
+     local script_pid = EPMVar["cache"][script_id]["PluginId"]
+     local script_short = string.upper(string.gsub(EPMVar["cache"][script_id]["ShortName"],"_"," "))
+     local script_install = script_directory .. EPMVar["cache"][script_id]["RawName"]..".xml"
+     local script_rawurl
+
+     if IsPluginInstalled(script_pid) then
+          ColourNote("Red","","EPM: Plugin: "..script_short.." Already installed, if you need to reload it use, EPM reload "..num)
+          return
+     end
+
+    ColourNote("Red","","EPM: Installing Plugin "..script_short)
+      
+     async_ok, async = pcall (require, "async")
+     if async_ok then
+          script_rawurl = async.request(script_url, "HTTPS")
+          retval, page, status, headers, full_status = script_rawurl:join()
+          
+          if status == 200 then
+               print("Plugin installing")
+               local lscript = io.open(script_install,"w")
+               lscript:write(page)
+               lscript:close()
+          else --end status 200
+               ColourNote("Red","","EPM: status was not 200")
+          end
+     end --end async_ok
+     ColourNote("Red","","EPM: Plugin "..script_short.." Installed Enjoy!")
+     LoadPlugin(script_name)
+
+end
+
+function EPMReload(PID)
+     local num, args = PID:match("(%d+)%s*(.*)")
+
+     if num ~= nil then
+          num = tonumber(num)
+     else
+          ColourNote("Red","","EPM: You need to supply a number, EG EPM reload 1")
+          return;
+     end
+
+     if args ~= "" then
+          --do stuff with args here (maybe)
+     end
+
+     local script_id = num
+     local script_name = EPMVar["cache"][script_id]["LongName"]
+     local script_url = EPMVar["cache"][script_id]["url"]
+     local script_pid = EPMVar["cache"][script_id]["PluginId"]
+     local script_short = string.gsub(EPMVar["cache"][script_id]["ShortName"],"_"," ")
+
+     if IsPluginInstalled(script_pid) then
+          ColourNote("Red","","EPM: Currently reloading script: "..script_short.." please stand by")
+          ReloadPlugin(script_pid)
+     else
+          ColourNote("Red","","EPM: Plugin: "..script_short.." Not installed, please use EPM install "..num)
+     end
+end
+
+function EPMremove(PID)
+     local num, args = PID:match("(%d+)%s*(.*)")
+
+     if num ~= nil then
+          num = tonumber(num)
+     else
+          ColourNote("Red","","EPM: You need to supply a number, EG EPM remove 1")
+          return;
+     end
+
+     if args ~= "" then
+          --do stuff with args here (maybe)
+     end
+
+     local script_id = num
+     local script_name = EPMVar["cache"][script_id]["LongName"]
+     local script_url = EPMVar["cache"][script_id]["url"]
+     local script_pid = EPMVar["cache"][script_id]["PluginId"]
+     local script_short = string.gsub(EPMVar["cache"][script_id]["ShortName"],"_"," ")
+
+     if IsPluginInstalled(script_pid) then
+          ColourNote("Red","","EPM: Currently removing script: "..script_short.." please stand by")
+          UnloadPlugin(script_pid)
+          local ok, err = os.remove(script_name)
+          if ok then
+               ColourNote("Red","","EPM: Removed script:"..script_short)
+          else
+               ColourNote("Red","","EPM: Was not able to remove"..script_short.." "..err)
+          end
+     else
+          ColourNote("Red","","EPM: Plugin: "..script_short.." Not installed, please use EPM install "..num)
+     end
+end
+
+function makeRawUrl()
+     async_ok, async = pcall (require, "async")
+     if async_ok then
+     
+     makeRawURL = async.request(gitHubRaw, "HTTPS")
+     retval, page, status, headers, full_status = makeRawURL:join()
+     
+     if status == 200 then
+          rawPluginUrl = string.explode(page,"\n")
+     end--end 200
+     end --end async_ok
+     return rawPluginUrl
+end
+
+function tablelength(T)
+  local count = 0
+  for i,v in pairs(T) do 
+     if v ~= "" then
+          count = count + 1
+     end
+  end
+  return count
+end
+
+function buildCache()
+     cache_Len = tablelength(rawPluginUrl)
+     ColourNote("Red","","EPM: BuildCache().cache_Len: ("..cache_Len..")")
+     cache_res = 0
+     ColourNote("Red","","EPM: BuildCache().cache_res: ("..cache_res..")")
+     EPMVar["cache"] = {}
+     EPMVar["Initialized"]="no"
+     
+     async_ok, async = pcall (require, "async")
+     if async_ok then
+          
+          for a,b in pairs (rawPluginUrl) do
+               if b == nil or b == "" or b==" " then
+                    return
+               else
+                    plugin_page = async.doAsyncRemoteRequest(b, raw_get_cache, "HTTPS") 
+               end
+          end -- end for loop
+			
+	else
+		ColourNote("Red","","EPM: something went wrong with async in building cache")
+	end --end if async_ok
+     
+end --end function buildCache()
+
+function raw_get_cache(retval, page, status, headers, full_status, request_url)
+     local WName,rawname,ghVersion,pid,lVersion,lname
+
+
+     cache_res = cache_res + 1
+     ColourNote("Red","","EPM: raw_get_cache().cache_res: ("..cache_res..")")
+     ColourNote("Red","","EPM: ----------------")
+     if status~= nil then ColourNote("Red","","EPM: Status:"..status) else ColourNote("Red","","EPM: Status:NIL") end
+     
+     iif status == 200 then
+	  -- WName: from page, else from URL, else "UNKNOWN"
+	  WName = getName(page, false)
+	  if not WName and request_url then
+		local from_url = request_url:match('/([^/]+)$')
+		if from_url then
+		  WName = from_url:gsub('%.xml$',''):gsub('%.txt$','')
+		end
+	  end
+	  WName = WName or "UNKNOWN"
+	  ColourNote("Red","","EPM: set wname:"..tostring(WName))
+
+	  -- rawname: from page, else fall back to WName
+	  rawname = page:match('%s+[Nn][Aa][Mm][Ee]="([%w_]+)"') or WName
+	  ColourNote("Red","","EPM: set rawname:"..tostring(rawname))
+
+	  -- version: accept any digits & dots; default "0"
+	  ghVersion = page:match('%s+[Vv][Ee][Rr][Ss][Ii][Oo][Nn]="([%d%.]+)"') or "0"
+	  ColourNote("Red","","EPM: set github version:"..tostring(ghVersion))
+
+	  -- plugin id: allow hyphens too; default empty
+	  pid = page:match('%s+[Ii][Dd]="([%w%-]+)"') or ""
+	  ColourNote("Red","","EPM: set plugin id:"..tostring(pid))
+
+	  -- local version: only query if we have a pid
+	  lVersion = (pid ~= "" and GetPluginInfo(pid,19)) or 0
+	  ColourNote("Red","","EPM: set local version:"..tostring(lVersion))
+
+	  -- long name: safe fallback even if rawname is nil
+	  local longNameFallback = (GetInfo and GetInfo(60) or "") .. (rawname or "plugin") .. ".xml"
+	  lname = (pid ~= "" and GetPluginInfo(pid,6)) or longNameFallback
+	  ColourNote("Red","","EPM: set long name:"..tostring(lname))
+
+	  -- ensure the cache bucket exists before we write
+	  EPMVar["cache"][cache_res] = EPMVar["cache"][cache_res] or {}
+
+     else
+          ColourNote("Red","","EPM: Cant connect to github")
+          cache_res = cache_res + 1
+          return
+     end
+     
+   
+     if cache_res >= cache_Len then   
+          ColourNote("Red","","EPM: Fired(1) Cache_Res("..cache_res..") >= cache_Len("..cache_Len..")")   
+          EPMVar["cache"][cache_res]["ShortName"] = WName
+          EPMVar["cache"][cache_res]["RawName"] = rawname
+          EPMVar["cache"][cache_res]["GHVersion"] = ghVersion
+          EPMVar["cache"][cache_res]["PluginId"] = pid
+          EPMVar["cache"][cache_res]["LocalVersion"] = lVersion
+          EPMVar["cache"][cache_res]["LongName"] = lname
+          EPMVar["cache"][cache_res]["url"] = request_url
+          EPMVar["Initialized"]="yes"
+          if pluginfirstrun == "yes" then
+               pluginfirstrun = "no"
+          else
+               EPMCheck()
+          end
+     else
+          ColourNote("Red","","EPM: Fired(2) Cache_Res("..cache_res..") < cache_Len("..cache_Len..")")   
+          EPMVar["cache"][cache_res]["ShortName"] = WName
+          EPMVar["cache"][cache_res]["RawName"] = rawname
+          EPMVar["cache"][cache_res]["GHVersion"] = ghVersion
+          EPMVar["cache"][cache_res]["PluginId"] = pid
+          EPMVar["cache"][cache_res]["LocalVersion"] = lVersion
+          EPMVar["cache"][cache_res]["LongName"] = lname
+          EPMVar["cache"][cache_res]["url"] = request_url
+     
+     end -- end counting if
+     ColourNote("Red","","EPM: ----------------")
+     
+     
+end--end raw_get
+
+
+--[[
+Self updating code below taken from crowley because im too lazy to write my own
+check him out on github
+https://github.com/AardCrowley/Aardwolf-Scripts
+]]
+
+function EPMSelfUpdate()
+     raw = "https://raw.githubusercontent.com/zzyzzyzzx/Hadar/master/PluginManager/Hadar_Plugin_Manager.xml"
+     async_ok, async = pcall (require, "async")
+     PLUGIN_VERSION  = GetPluginInfo(GetPluginID(), 19)
+     PLUGIN_NAME   = GetPluginInfo(GetPluginID(), 1)
+     if async_ok then
+          plugin_page = async.doAsyncRemoteRequest(raw, Raw_Update, "HTTPS")
+     else
+          ColourNote("Red","","EPM: Error on updating")
+     end
+end
+
+function Raw_Update(retval, page, status, headers, full_status, request_url)
+        if status == 200 then
+            raw_version = tonumber(string.match(page, '%s%s+version="(%d+%.?%d+)"'))
+        end
+
+        if tonumber(raw_version) == tonumber(PLUGIN_VERSION) then
+            ColourNote("Red","","EPM: "..PLUGIN_NAME .. " is up to date!")
+        elseif tonumber(raw_version) > tonumber(PLUGIN_VERSION) then
+            ColourNote("Red","","EPM: Updating from version "..PLUGIN_VERSION.." to "..raw_version.." Please stand by.")
+            local file = io.open(GetPluginInfo(GetPluginID(), 6), "w")
+            file:write(page)
+            file:close()
+            if "" == GetAlphaOption("script_prefix") then
+                SetAlphaOption("script_prefix", "\\\\\\")
+            end
+            Execute(GetAlphaOption("script_prefix") .. "DoAfterSpecial(1, \"ReloadPlugin('" .. GetPluginID() .. "')\", sendto.script)")
+            EPMVar["cache"] = {}
+            ColourNote("Red","","EPM: Updating is complete, Have a muddish day!")
+        elseif tonumber(raw_version) < tonumber(PLUGIN_VERSION) then
+          ColourNote("Red","","EPM: Your development is too quick!")
+        end
+        raw_version = nil
+    end -- end Update code
+
+--end of self update code
+
+function ShowHelp()
+	  ColourNote("Red","","EPM: +-----------------------[Plugin Manager V:"..GetPluginInfo (GetPluginID (), 19).."]------------------------+")
+	  ColourNote("Red","","EPM: | epm help                - Displays this helpfile                     |")
+	  ColourNote("Red","","EPM: | epm check               - Checks to see if there is any updates      |")
+	  ColourNote("Red","","EPM: | epm selfupdate          - Checks for updates on this script          |")
+	  ColourNote("Red","","EPM: | epm update <number>     - updates plugin with number from epm check  |")
+	  ColourNote("Red","","EPM: | epm reload <number>     - reloads plugin with number from epm check  |")
+	  ColourNote("Red","","EPM: | epm install <number>    - installs plugin with number from epm check |")
+	  ColourNote("Red","","EPM: | epm remove <number>     - removes plugin with number from epm check  |")
+	  ColourNote("Red","","EPM: +----------------------------------------------------------------------+")
+end
+
+]]>
+</script> 
+
+</muclient>
