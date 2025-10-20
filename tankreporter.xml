@@ -1,235 +1,200 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE muclient>
-<muclient>
-  <plugin
-    name="Tank_Reporter"
-    author="Kelaire"
-    id="edb096f13f8ae3efa7e5124b"
-    language="Lua"
-    purpose="Parse look output and report who is tanking mobs (including YOU)"
-    date_written="2025-10-19"
-    requires="4.94"
-    version="1.65"
-    save_state="y">
-  </plugin>
-
-  <aliases>
-    <!-- tanks <channel>  (channel = spouse|gt|say) -->
-	<alias
-	  script="StartTankScan"
-	  match="^tanks\s+(?<chan>\w+)$"
-	  enabled="y"
-	  regexp="y"
-	  sequence="100"
-	  ignore_case="y" />
-
-	<!-- tanks  (no argument => local-only) -->
-	<alias
-	  script="StartTankScan"
-	  match="^tanks$"
-	  enabled="y"
-	  regexp="y"
-	  sequence="101"
-	  ignore_case="y" />
-
-
-    <!-- Set or view your own player name used in reports -->
-    <alias
-      script="SetTankSelfName"
-      match="^tanks me (?<who>[A-Za-z]+)?$"
-      enabled="y"
-      regexp="y"
-      sequence="102"
-      ignore_case="y" />
-	  
-  </aliases>
-
-  <triggers>
-    <!-- Begin capture on the opening marker -->
-    <trigger
-      name="TR_TANK_BEGIN"
-      enabled="y"
-      regexp="y"
-      keep_evaluating="y"
-      omit_from_output="n"
-      sequence="90"
-      match="^\{KELTANK\}\s*$"
-      script="OnTankBegin" />
-
-    <!-- End capture on the closing marker -->
-    <trigger
-      name="TR_TANK_END"
-      enabled="y"
-      regexp="y"
-      keep_evaluating="y"
-      omit_from_output="n"
-      sequence="91"
-      match="^\{\/KELTANK\}\s*$"
-      script="OnTankEnd" />
-
-    <!-- Capture lines while enabled between markers -->
-    <trigger
-      name="TR_TANK_CAPTURE"
-      group="TANK_SCAN"
-      enabled="n"
-      regexp="y"
-      keep_evaluating="y"
-      omit_from_output="n"
-      sequence="100"
-      match="is fighting|is trying to KILL YOU!"
-      script="OnFightLine" />
-  </triggers>
-
-  <script><![CDATA[
--- =========================
--- State
--- =========================
-tankCounts    = tankCounts    or {}   -- [player] = count
-tankActive    = tankActive    or false
-tankSelfName  = tankSelfName  or (GetVariable("tank_self_name") or "")
-tankOutChan   = tankOutChan   or ""   -- spouse|gt|say or "" (local only)
-
--- utils
-local function trim(s) return (s:gsub("^%s+",""):gsub("%s+$","")) end
-local function sorted_counts(tbl)
-  local arr = {}
-  for k,v in pairs(tbl) do arr[#arr+1] = {name=k, count=v} end
-  table.sort(arr, function(a,b)
-    if a.count ~= b.count then return a.count > b.count end
-    return a.name:lower() < b.name:lower()
-  end)
-  return arr
-end
-
--- =========================
--- Aliases
--- =========================
-local function normalize_channel(s)
-  if not s or s == "" then return "" end  -- no arg => local only
-  s = s:lower()
-  if s == "spouse" or s == "gt" or s == "say" then return s end
-  return nil
-end
-
-function StartTankScan(name, line, wildcards)
-  local norm = normalize_channel(wildcards.chan)
-  if norm == nil then
-    return ColourNote("red","", "Usage: tanks [channel]   channel (optional) is spouse | gt | say")
-  end
-  tankOutChan = norm or ""  -- "" => local-only
-
-  Send("echo {KELTANK}")
-  Send("look")
-  Send("echo {/KELTANK}")
-end
-
-function SetTankSelfName(name, line, wildcards)
-  local who = wildcards.who
-  if not who or who == "" then
-    local current = (tankSelfName ~= "" and tankSelfName) or "(You)"
-    return ColourNote("cyan","", "Tank_Reporter: self name is " .. current ..
-                               "  (set via: tanks me <YourName>)")
-  end
-  tankSelfName = who
-  SetVariable("tank_self_name", tankSelfName)
-  ColourNote("yellow","", "Tank_Reporter: self name set to " .. tankSelfName)
-end
-
-function StopTankScan()
-  tankActive = false
-  EnableTriggerGroup("TANK_SCAN", false)
-  ColourNote("silver", "", "Tank scan: stopped.")
-  tankOutChan = ""
-end
-
-
--- =========================
--- Marker handlers
--- =========================
-function OnTankBegin()
-  tankCounts = {}
-  tankActive = true
-  EnableTriggerGroup("TANK_SCAN", true)
-  local dest = (tankOutChan ~= "" and tankOutChan or "local only")
-  ColourNote("yellow","","Tank scan: capturing between markers... (out: "..dest..")")
-end
-
-local function send_on_channel(msg)
-  if tankOutChan == "" then return end
-  Send(string.format("%s %s", tankOutChan, msg))
-end
-
-function OnTankEnd()
-  tankActive = false
-  EnableTriggerGroup("TANK_SCAN", false)
-
-  local msg
-  if next(tankCounts) == nil then
-    msg = "Tanks: (none detected)"
-    ColourNote("silver","", msg)
-    send_on_channel(msg)
-    tankOutChan = ""
-    return
-  end
-
-  local arr = sorted_counts(tankCounts)
-  local parts = {}
-  for _,entry in ipairs(arr) do
-    parts[#parts+1] = string.format("%s (%d)", entry.name, entry.count)
-  end
-  msg = "Tanks: " .. table.concat(parts, ", ")
-
-  ColourNote("lime", "", msg)
-  send_on_channel(msg)
-
-  tankOutChan = ""
-end
-
--- =========================
--- Capture trigger
--- =========================
--- Keep patterns SIMPLE and forgiving.
-
--- Detect "YOU" lines (case-insensitive)
-local function is_you_line(s)
-  return s:lower():find("is trying to kill you!", 1, true) ~= nil
-end
-
--- Extract player on "... is fighting <Player>." (single-word names with letters/digits/_/'/-)
-local function player_from_fighting_line(s)  -- 1) Ignore PLAYER->MOB lines if the very first flag is (P) or (Player)  local first_flag = s:match("^%s*%(([^)]*)%)")  if first_flag then    local f = first_flag:lower()    if f == "p" or f == "player" then      return ""  -- ignore    end  end  -- 2) Pretitle-aware: grab everything after "is fighting" up to final punctuation,  --    then take the LAST word as the character's name.  local tail = s:match("is fighting%s+(.+)%s*[%.%!%?]%s*$")  if not tail then return "" end  -- Last "word" made of letters/digits/_/'/-  local name = tail:match("([%w_'%-]+)%s*$") or ""  return trim(name)end
-
-function OnFightLine(name, line, wc)
-  if not tankActive then return end
-
-  -- First: "KILL YOU!" lines
-  if is_you_line(line) then
-    local who = (tankSelfName and tankSelfName ~= "") and tankSelfName or "(You)"
-    tankCounts[who] = (tankCounts[who] or 0) + 1
-    return
-  end
-
-  -- Then: MOB -> PLAYER lines
-  local player = player_from_fighting_line(line)
-  if player ~= "" then
-    tankCounts[player] = (tankCounts[player] or 0) + 1
-  end
-end
-
--- =========================
--- Lifecycle
--- =========================
-function OnPluginInstall()
-  tankSelfName = GetVariable("tank_self_name") or (tankSelfName or "")
-  EnableTriggerGroup("TANK_SCAN", false)
-  ColourNote("cyan","", "Tank_Reporter: use 'tanks [channel]' to scan (channel optional: spouse|gt|say). Set your name via 'tanks me <YourName>'.")
-end
-
-function OnPluginEnable()
-  EnableTriggerGroup("TANK_SCAN", false)
-end
-
-function OnPluginDisable()
-  EnableTriggerGroup("TANK_SCAN", false)
-end
-  ]]></script>
-</muclient>
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE muclient>
+<muclient>
+  <plugin
+    name="Tank_Reporter"
+    author="Kelaire"
+    id="edb096f13f8ae3efa7e5124b"
+    language="Lua"
+    purpose="Parse look output and report who is tanking mobs (including YOU)"
+    date_written="2025-10-19"
+    requires="4.94"
+    version="1.70"
+    save_state="y">
+  </plugin>
+
+  <!-- Put the Lua first so handlers exist before aliases/triggers bind -->
+  <script><![CDATA[
+-- ========= State =========
+tankCounts    = {}                     -- [player] = count
+tankActive    = false
+tankSelfName  = GetVariable("tank_self_name") or ""
+tankOutChan   = ""                     -- "", or "spouse"|"gt"|"say"
+
+-- ========= Helpers (local) =========
+local function trim(s) return (s:gsub("^%s+",""):gsub("%s+$","")) end
+
+local function sorted_counts(tbl)
+  local arr = {}
+  for k,v in pairs(tbl) do arr[#arr+1] = {name=k, count=v} end
+  table.sort(arr, function(a,b)
+    if a.count ~= b.count then return a.count > b.count end
+    return a.name:lower() < b.name:lower()
+  end)
+  return arr
+end
+
+local function normalize_channel(s)
+  if not s or s == "" then return "" end  -- no arg => local only
+  s = s:lower()
+  if s == "spouse" or s == "gt" or s == "say" then return s end
+  return nil
+end
+
+local function is_you_line(s)
+  return s:lower():find("is trying to kill you!", 1, true) ~= nil
+end
+
+local function player_from_fighting_line(s)
+  -- Ignore PLAYER->MOB if first flag is (P) or (Player)
+  local first_flag = s:match("^%s*%(([^)]*)%)")
+  if first_flag then
+    local f = first_flag:lower()
+    if f == "p" or f == "player" then
+      return ""
+    end
+  end
+  -- Pretitle-aware: tail after "is fighting", then last word
+  local tail = s:match("is fighting%s+(.+)%s*[%.%!%?]%s*$")
+  if not tail then return "" end
+  local name = tail:match("([%w_'%-]+)%s*$") or ""
+  return trim(name)
+end
+
+local function send_on_channel(msg)
+  if tankOutChan ~= "" then
+    Send(string.format("%s %s", tankOutChan, msg))
+  end
+end
+
+-- ========= Handlers (global) =========
+function StartTankScan(name, line, wildcards)
+  local norm = normalize_channel(wildcards and wildcards.chan)
+  if norm == nil then
+    return ColourNote("red","", "Usage: tanks [channel]   channel (optional) is spouse | gt | say")
+  end
+  tankOutChan = norm or ""  -- "" => local only
+
+  -- place fresh markers every run
+  Send("echo {KELTANK}")
+  Send("look")
+  Send("echo {/KELTANK}")
+end
+
+function SetTankSelfName(name, line, wildcards)
+  local who = wildcards and wildcards.who
+  if not who or who == "" then
+    local current = (tankSelfName ~= "" and tankSelfName) or "(You)"
+    return ColourNote("cyan","", "Tank_Reporter: self name is " .. current ..
+                               "  (set via: tanks me <YourName>)")
+  end
+  tankSelfName = who
+  SetVariable("tank_self_name", tankSelfName)
+  ColourNote("yellow","", "Tank_Reporter: self name set to " .. tankSelfName)
+end
+
+function StopTankScan()
+  tankActive = false
+  EnableTriggerGroup("TANK_SCAN", false)
+  ColourNote("silver", "", "Tank scan: stopped.")
+  tankOutChan = ""
+end
+
+function OnTankBegin()
+  tankCounts = {}
+  tankActive = true
+  EnableTriggerGroup("TANK_SCAN", true)
+  local dest = (tankOutChan ~= "" and tankOutChan or "local only")
+  ColourNote("yellow","","Tank scan: capturing between markers... (out: "..dest..")")
+end
+
+function OnTankEnd()
+  tankActive = false
+  EnableTriggerGroup("TANK_SCAN", false)
+
+  local msg
+  if next(tankCounts) == nil then
+    msg = "Tanks: (none detected)"
+    ColourNote("silver","", msg)
+    send_on_channel(msg)
+    tankOutChan = ""
+    return
+  end
+
+  local parts = {}
+  for _,entry in ipairs(sorted_counts(tankCounts)) do
+    parts[#parts+1] = string.format("%s (%d)", entry.name, entry.count)
+  end
+  msg = "Tanks: " .. table.concat(parts, ", ")
+
+  ColourNote("lime", "", msg)
+  send_on_channel(msg)
+  tankOutChan = ""
+end
+
+function OnFightLine(name, line, wc)
+  if not tankActive then return end
+
+  if is_you_line(line) then
+    local who = (tankSelfName ~= "" and tankSelfName) and tankSelfName or "(You)"
+    tankCounts[who] = (tankCounts[who] or 0) + 1
+    return
+  end
+
+  local player = player_from_fighting_line(line)
+  if player ~= "" then
+    tankCounts[player] = (tankCounts[player] or 0) + 1
+  end
+end
+
+-- ========= Lifecycle =========
+function OnPluginInstall()
+  tankSelfName = GetVariable("tank_self_name") or ""
+  EnableTriggerGroup("TANK_SCAN", false)
+  ColourNote("cyan","", "Tank_Reporter: use 'tanks [channel]' (channel optional: spouse|gt|say). Set your name via 'tanks me <YourName>'.")
+end
+
+function OnPluginEnable()
+  EnableTriggerGroup("TANK_SCAN", false)
+end
+
+function OnPluginDisable()
+  EnableTriggerGroup("TANK_SCAN", false)
+end
+  ]]></script>
+
+  <aliases>
+    <!-- tanks <channel> -->
+    <alias script="StartTankScan"
+           match="^tanks\s+(?<chan>\w+)$"
+           enabled="y" regexp="y" sequence="100" ignore_case="y" />
+    <!-- tanks (no arg => local) -->
+    <alias script="StartTankScan"
+           match="^tanks$"
+           enabled="y" regexp="y" sequence="101" ignore_case="y" />
+    <!-- tanks me [name] -->
+    <alias script="SetTankSelfName"
+           match="^tanks me(?:\s+(?<who>[A-Za-z0-9_]+))?$"
+           enabled="y" regexp="y" sequence="102" ignore_case="y" />
+  </aliases>
+
+  <triggers>
+    <trigger name="TR_TANK_BEGIN"
+             enabled="y" regexp="y" keep_evaluating="y" omit_from_output="n"
+             sequence="90"
+             match="^\{KELTANK\}\s*$"
+             script="OnTankBegin" />
+
+    <trigger name="TR_TANK_END"
+             enabled="y" regexp="y" keep_evaluating="y" omit_from_output="n"
+             sequence="91"
+             match="^\{\/KELTANK\}\s*$"
+             script="OnTankEnd" />
+
+    <trigger name="TR_TANK_CAPTURE"
+             group="TANK_SCAN" enabled="n" regexp="y"
+             keep_evaluating="y" omit_from_output="n" sequence="100"
+             match="is fighting|is trying to KILL YOU!"
+             script="OnFightLine" />
+  </triggers>
+</muclient>
