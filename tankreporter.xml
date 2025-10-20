@@ -2,14 +2,14 @@
 <!DOCTYPE muclient>
 <muclient>
   <plugin
-    name="Epic_TankReporter"
+    name="Tank_Reporter"
     author="Kelaire"
     id="edb096f13f8ae3efa7e5124b"
     language="Lua"
     purpose="Parse look output and report who is tanking mobs (including YOU)"
     date_written="2025-10-19"
     requires="4.94"
-    version="1.5"
+    version="1.6"
     save_state="y">
   </plugin>
 
@@ -197,7 +197,12 @@ end
 
 -- Extract player on "... is fighting <Player>." (single-word names with letters/digits/_/'/-)
 local function player_from_fighting_line(s)
-  return trim(s:match("is fighting%s+([%w_'%-]+)[%.%!]%s*$") or "")
+  -- get the tail: everything after "is fighting" up to the final "." or "!"
+  local tail = s:match("is fighting%s+(.+)%s*[%.%!]%s*$")
+  if not tail then return "" end
+  -- the player name is the last “word” (letters/digits/_/'/-) in that tail
+  local name = tail:match("([%w_'%-]+)%s*$") or ""
+  return trim(name)
 end
 
 function OnFightLine(name, line, wc)
@@ -235,4 +240,3 @@ function OnPluginDisable()
 end
   ]]></script>
 </muclient>
-
