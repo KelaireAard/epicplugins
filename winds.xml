@@ -18,7 +18,7 @@ commentz
    purpose="Winds epic stuff."
    date_written="2018-01-24 20:02:50"
    requires="4.30"
-   version="1.1"
+   version="1.2"
    save_state="y"
    >
 <description trim="n">
@@ -1059,3 +1059,4 @@ end
 </script>
 
 </muclient>
+
