@@ -11,7 +11,7 @@
    save_state="y"
    date_written="2025-10-10 09:00:00"
    requires="4.00"
-   version="1.00"
+   version="1.01"
    >
 
 </plugin>
@@ -481,7 +481,7 @@ function raw_get_cache(retval, page, status, headers, full_status, request_url)
 	  end
 
 	  -- version: accept any digits & dots; default "0"
-	  ghVersion = page:match('%s+[Vv][Ee][Rr][Ss][Ii][Oo][Nn]="([%d%.]+)"') or "0"
+	  ghVersion = page:match('[\r\n]%s*[Vv][Ee][Rr][Ss][Ii][Oo][Nn]="(%d+%.%d+)"%s*[\r\n]') or "0"
 	  if EPMVar["Debug"] == "yes" then
 	    ColourNote("Red","","EPM: set github version:"..tostring(ghVersion))
 	  end
@@ -611,5 +611,6 @@ end
 
 ]]>
 </script> 
+
 
 </muclient>
