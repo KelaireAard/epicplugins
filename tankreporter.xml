@@ -2,7 +2,7 @@
 <!DOCTYPE muclient>
 <muclient>
   <plugin
-    name="Tank_Reporter"
+    name="Epic_TankReporter"
     author="Kelaire"
     id="edb096f13f8ae3efa7e5124b"
     language="Lua"
@@ -235,3 +235,4 @@ function OnPluginDisable()
 end
   ]]></script>
 </muclient>
+
