@@ -11,7 +11,7 @@ commentz
 
 <muclient>
 <plugin
-   name="Aard_Winds_Epic"
+   name="Epic_WindsHelper"
    author="Endymion"
    id="4b128e4e3d76f0a2bda4b0ed"
    language="Lua"
@@ -1057,4 +1057,5 @@ function OnHelp ()
 end
 ]]>
 </script>
+
 </muclient>
