@@ -7,7 +7,7 @@
 
 <muclient>
 <plugin
-   name="Tallimos_Epic_Broadcaster"
+   name="Epic_TEBBroadcaster"
    author="Tallimos"
    id="ee9c79343749c58f7d1e99bc"
    language="Lua"
@@ -1262,4 +1262,5 @@ function dbot.reload()
 end -- dbot.reload
 ]]>
 </script> 
+
 </muclient>
