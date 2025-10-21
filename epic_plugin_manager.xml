@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
 <!DOCTYPE muclient>
-
 <muclient>
 <plugin
    name="Epic_Plugin_Manager"
@@ -11,11 +10,9 @@
    save_state="y"
    date_written="2025-10-10 09:00:00"
    requires="4.00"
-   version="1.01"
+   version="1.2"
    >
-
 </plugin>
-
 <!-- Alias
 <alias
    script=""
@@ -160,7 +157,7 @@ function pmMain(n,l,wc)
      elseif first == "reload" then
           EPMReload(rest)
      elseif first == "help" then
-          ShowHelp()
+          ShowHelp(rest)
      elseif first == "show" then
           tprint(EPMVar["cache"])
      elseif first == "delcache" then
@@ -182,10 +179,11 @@ function EPMCheck()
 
      if EPMVar["Initialized"]=="yes" then
 
-               ColourNote("Red","","+----------[List of maintained plugins]----------+")
+               ColourNote("Red","","+--------------------------[List of maintained plugins]--------------------------+")
                for num,data in ipairs(EPMVar["cache"]) do 
                     script_short = string.upper(string.gsub(data["ShortName"],"_"," "))
-                    ColourTell("Cyan", "", "[" .. num .. "] ", "SkyBlue", "", script_short .. " ")
+                    ColourTell("Cyan", "", string.format("[%2d] ",num))
+					Hyperlink("epm help "..num, string.format("%-20s",script_short), "Plugin Information", "SkyBlue", "black", 0, 1)
 
                     if IsPluginInstalled(EPMVar["cache"][num]["PluginId"]) then
                          if tonumber(EPMVar["cache"][num]["GHVersion"]) == nil then
@@ -207,7 +205,7 @@ function EPMCheck()
                          if tonumber(EPMVar["cache"][num]["LocalVersion"]) < tonumber(EPMVar["cache"][num]["GHVersion"]) then
                               Hyperlink("epm update "..num, "[Update Plugin]", "Download and Update Plugin", "DarkOrange", "black", 0, 1)
                          else
-                              Hyperlink("epm reload "..num, "[reload Plugin]", "Reload plugin", "Teal", "black", 0, 1)
+                              Hyperlink("epm reload "..num, "[Reload Plugin]", "Reload plugin", "Teal", "black", 0, 1)
                          end
                          Hyperlink("epm remove "..num, "[Remove Plugin]", "Remove plugin", "Red", "black", 0, 1)
                
@@ -222,7 +220,7 @@ function EPMCheck()
                     end
 
                end
-               ColourNote("Red","","+------------------------------------------------+")
+               ColourNote("Red","","+--------------------------------------------------------------------------------+")
      else
           makeRawUrl()
           buildCache()
@@ -448,7 +446,7 @@ function buildCache()
 end --end function buildCache()
 
 function raw_get_cache(retval, page, status, headers, full_status, request_url)
-     local WName,rawname,ghVersion,pid,lVersion,lname
+     local WName,rawname,ghVersion,pid,lVersion,lname,_,description
 
 
      cache_res = cache_res + 1
@@ -485,6 +483,19 @@ function raw_get_cache(retval, page, status, headers, full_status, request_url)
 	  if EPMVar["Debug"] == "yes" then
 	    ColourNote("Red","","EPM: set github version:"..tostring(ghVersion))
 	  end
+	  
+	  -- get description (purpose="...")
+	  -- use two-capture pattern but bind the 2nd capture
+	  _, description = page:match('[Pp][Uu][Rr][Pp][Oo][Ss][Ee]%s*=%s*([\'"])(.-)%1')
+	  -- fallback: try explicit single-capture patterns (just in case)
+	  if not description or description == "" then
+		description = page:match('[Pp][Uu][Rr][Pp][Oo][Ss][Ee]%s*=%s*"(.-)"')
+			 or page:match("[Pp][Uu][Rr][Pp][Oo][Ss][Ee]%s*=%s*'(.-)'")
+			 or ""
+	  end
+	  if EPMVar["Debug"] == "yes" then
+	    ColourNote("Red","","EPM: set description:"..tostring(description))
+      end
 
 	  -- plugin id: allow hyphens too; default empty
 	  pid = page:match('%s+[Ii][Dd]="([%w%-]+)"') or ""
@@ -523,6 +534,7 @@ function raw_get_cache(retval, page, status, headers, full_status, request_url)
           EPMVar["cache"][cache_res]["RawName"] = rawname
           EPMVar["cache"][cache_res]["GHVersion"] = ghVersion
           EPMVar["cache"][cache_res]["PluginId"] = pid
+		  EPMVar["cache"][cache_res]["Description"] = description
           EPMVar["cache"][cache_res]["LocalVersion"] = lVersion
           EPMVar["cache"][cache_res]["LongName"] = lname
           EPMVar["cache"][cache_res]["url"] = request_url
@@ -540,6 +552,7 @@ function raw_get_cache(retval, page, status, headers, full_status, request_url)
           EPMVar["cache"][cache_res]["RawName"] = rawname
           EPMVar["cache"][cache_res]["GHVersion"] = ghVersion
           EPMVar["cache"][cache_res]["PluginId"] = pid
+		  EPMVar["cache"][cache_res]["Description"] = description
           EPMVar["cache"][cache_res]["LocalVersion"] = lVersion
           EPMVar["cache"][cache_res]["LongName"] = lname
           EPMVar["cache"][cache_res]["url"] = request_url
@@ -597,18 +610,32 @@ function Raw_Update(retval, page, status, headers, full_status, request_url)
 
 --end of self update code
 
-function ShowHelp()
-	  ColourNote("Red","","EPM: +-----------------------[Plugin Manager V:"..GetPluginInfo (GetPluginID (), 19).."]------------------------+")
-	  ColourNote("Red","","EPM: | epm help                - Displays this helpfile                     |")
-	  ColourNote("Red","","EPM: | epm check               - Checks to see if there is any updates      |")
-	  ColourNote("Red","","EPM: | epm selfupdate          - Checks for updates on this script          |")
-	  ColourNote("Red","","EPM: | epm update <number>     - updates plugin with number from epm check  |")
-	  ColourNote("Red","","EPM: | epm reload <number>     - reloads plugin with number from epm check  |")
-	  ColourNote("Red","","EPM: | epm install <number>    - installs plugin with number from epm check |")
-	  ColourNote("Red","","EPM: | epm remove <number>     - removes plugin with number from epm check  |")
-	  ColourNote("Red","","EPM: +----------------------------------------------------------------------+")
+function ShowHelp(PID)
+  local num, args = (PID or ""):match("(%d+)%s*(.*)")
+  if not num then
+    ColourNote("Red","","EPM: +-----------------------[Plugin Manager V:"..GetPluginInfo(GetPluginID(), 19).."]------------------------+")
+    ColourNote("Red","","EPM: | epm help                - Displays this helpfile                     |")
+    ColourNote("Red","","EPM: | epm check               - Checks to see if there is any updates      |")
+    ColourNote("Red","","EPM: | epm selfupdate          - Checks for updates on this script          |")
+    ColourNote("Red","","EPM: | epm help <number>       - Displays help for plugin                   |")
+    ColourNote("Red","","EPM: | epm update <number>     - updates plugin with number from epm check  |")
+    ColourNote("Red","","EPM: | epm reload <number>     - reloads plugin with number from epm check  |")
+    ColourNote("Red","","EPM: | epm install <number>    - installs plugin with number from epm check |")
+    ColourNote("Red","","EPM: | epm remove <number>     - removes plugin with number from epm check  |")
+    ColourNote("Red","","EPM: +----------------------------------------------------------------------+")
+    return
+  end
+  num = tonumber(num)
+  local entry = EPMVar["cache"][num]
+  if not entry then
+    ColourNote("Red","","EPM: No cached entry for #" .. tostring(num) .. ". Try 'epm check' first.")
+    return
+  end
+  local script_name        = entry["LongName"]      or "(unknown)"
+  local short_name         = entry["ShortName"]     or "(unknown)"
+  local script_description = entry["Description"]   or "(no description)"
+  ColourNote("Red","","EPM: " .. short_name .. " - " .. script_description)
 end
-
 ]]>
 </script> 
 
