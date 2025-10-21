@@ -9,17 +9,17 @@
    purpose="Will sort items with timers, which are in your inventory, by expiration."
    date_written="2011-12-30 22:45:00"
    requires="4.70"
-   version="1.1"
+   version="1.2"
    >
 <description trim="y">
-Type 'expiresort" to sort items with timers, which are in your inventory (not in a bag), by expiration.
+Type 'expiresort' to sort items with timers, which are in your inventory (not in a bag), by expiration.
 </description>
 </plugin>
- 
+
 <!--  Triggers  -->
- 
+
 <triggers>
- 
+
 <trigger
    enabled="n"
    match="{invdata}"
@@ -34,7 +34,7 @@ Type 'expiresort" to sort items with timers, which are in your inventory (not in
    EnableTrigger("end_inv", true)
 </send>
 </trigger>
- 
+
 <trigger
    enabled="n"
    match="{/invdata}"
@@ -49,7 +49,7 @@ Type 'expiresort" to sort items with timers, which are in your inventory (not in
    EnableTrigger("end_inv", false)
 </send>
 </trigger>
- 
+
 <trigger
    enabled="n"
    match="^(\d+),(\w*),(.+),(\d+),(\d+),([01]),(-?\d+),(-?\d+)"
@@ -62,9 +62,9 @@ Type 'expiresort" to sort items with timers, which are in your inventory (not in
 >
 </trigger>
 </triggers>
- 
+
 <aliases>
- 
+
 <alias
    match="^expiresort$"
    regexp="y"
@@ -78,46 +78,78 @@ Type 'expiresort" to sort items with timers, which are in your inventory (not in
    SendNoEcho("invdata")
 </send>
 </alias>
- 
+
 </aliases>
- 
+
 <script>
 <![CDATA[
- 
- 
+
 expiring_inventory = {}
- 
+
+-- Use a batch to not spam/disconnect
+local give_idx = 1                -- current position in expiring_inventory
+local batch_size = 25             -- how many 'give' commands per batch
+local batch_delay_sec = 5.0       -- delay between batches
+local reorder_total = 0           -- total items for this run
+local batching_active = false     -- guard to prevent concurrent runs
+
 function parseInvdata(name, line, wildcards, styles)
-    local item_timer = wildcards[8] --
-    --Note("The timer for " .. wildcards[1] .. " is " .. item_timer)
-   
+    local item_timer = wildcards[8] -- field 8 is timer
     if (item_timer ~= "-1") then -- -1 is no timer
         table.insert(expiring_inventory, {timer = tonumber(item_timer), objectid = wildcards[1]})
     end
-   
-   
 end
- 
+
+-- Non-blocking batch sender
+function ProcessGives()
+    if not batching_active then
+        return -- safety: nothing to do
+    end
+
+    local sent = 0
+    while give_idx <= #expiring_inventory and sent < batch_size do
+        local v = expiring_inventory[give_idx]
+        -- send quietly
+        SendNoEcho(("give %s self"):format(v.objectid))
+        give_idx = give_idx + 1
+        sent = sent + 1
+    end
+
+    if give_idx <= #expiring_inventory then
+        -- schedule next batch
+        DoAfterSpecial(batch_delay_sec, "ProcessGives()", sendto.script)
+    else
+        -- finished
+        batching_active = false
+        Note(("Reordering done.  You reordered %d items"):format(reorder_total))
+        -- reset state for next run
+        give_idx = 1
+        reorder_total = 0
+    end
+end
+
 function ReorderExpiringItems()
     require "tprint"
-    table.sort(expiring_inventory, function(a,b) return a.timer<b.timer end)
-   
-    --tprint(expiring_inventory)
-   
-    if (#expiring_inventory >= 425) then
-        Note("You have more than 425 items with timers.  Don't want to spam the MUD that much.  Try again when you have less.")
-    else
-        for k,v in ipairs(expiring_inventory) do
-       
-            --Note("Will now send '" .. "give " .. v.objectid .. " self")
-            SendNoEcho("give " .. v.objectid .. " self")
-           
-        end
-        Note("Reordering done.  You reordered " .. #expiring_inventory .. " items")
+    table.sort(expiring_inventory, function(a,b) return a.timer < b.timer end)
+
+    if batching_active then
+        Note("A previous expiresort batch is still running. Please wait a moment and try again.")
+        return
     end
-   
+
+    -- initialize batch run
+    reorder_total = #expiring_inventory
+    if reorder_total == 0 then
+        Note("No expiring items found.")
+        return
+    end
+
+    batching_active = true
+    give_idx = 1
+    -- kick off first batch immediately
+    ProcessGives()
 end
- 
+
 ]]>
 </script>
 </muclient>
