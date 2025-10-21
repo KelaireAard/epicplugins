@@ -7,7 +7,7 @@
 
 <muclient>
 <plugin
-   name="Epic_Not_Here_Counter"
+   name="Epic_NotHereCounter"
    author="Arcidayne"
    id="e6cd5104e883a1dd9c4362e2"
    language="Lua"
