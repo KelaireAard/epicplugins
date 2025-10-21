@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="iso-8859-1"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE muclient>
 <muclient>
   <plugin
@@ -6,33 +6,51 @@
     author="Kelaire"
     id="edb096f13f8ae3efa7e5124b"
     language="Lua"
-    purpose="Parse look output and report who is tanking mobs (including YOU)"
-    date_written="2025-10-19"
+    purpose="Parse look output and report who is tanking mobs (including YOU), showing each tank's HP% from group"
+    date_written="2025-10-21"
     requires="4.94"
-    version="1.70"
+    version="1.90"
     save_state="y">
   </plugin>
 
-  <!-- Put the Lua first so handlers exist before aliases/triggers bind -->
   <script><![CDATA[
+  
+require("gmcphelper")
+
 -- ========= State =========
 tankCounts    = {}                     -- [player] = count
 tankActive    = false
-tankSelfName  = GetVariable("tank_self_name") or ""
+tankSelfName  = ""
 tankOutChan   = ""                     -- "", or "spouse"|"gt"|"say"
 
--- ========= Helpers (local) =========
+-- group capture
+groupActive   = false
+groupHP       = {}                     -- [lower(name)] = {cur=number,max=number, pct=number}
+
+-- ========= Helpers =========
 local function trim(s) return (s:gsub("^%s+",""):gsub("%s+$","")) end
 
 local function sorted_counts(tbl)
   local arr = {}
-  for k,v in pairs(tbl) do arr[#arr+1] = {name=k, count=v} end
-  table.sort(arr, function(a,b)
+  for k, v in pairs(tbl) do
+    local name, count
+    if type(v) == "table" then
+      name  = v.name or k
+      count = v.count or 0
+    else
+      -- v is a number (old style)
+      name  = k
+      count = tonumber(v) or 0
+    end
+    arr[#arr+1] = { key = k, name = name, count = count }
+  end
+  table.sort(arr, function(a, b)
     if a.count ~= b.count then return a.count > b.count end
     return a.name:lower() < b.name:lower()
   end)
   return arr
 end
+
 
 local function normalize_channel(s)
   if not s or s == "" then return "" end  -- no arg => local only
@@ -45,8 +63,18 @@ local function is_you_line(s)
   return s:lower():find("is trying to kill you!", 1, true) ~= nil
 end
 
+-- normalize player names for dictionary keys
+local function norm_name(s)
+  if not s or s == "" then return "" end
+  -- remove trailing punctuation and any non name chars
+  s = s:gsub("[%s%p]+$", "")          -- drop trailing punctuation/space
+  s = s:gsub("[^%w_'%-]", "")         -- keep letters/digits/_/'/-
+  return s:lower()
+end
+
+-- MOB -> PLAYER lines (ignore (P)/(Player) first flag, pretitle-aware: last word after 'is fighting')
 local function player_from_fighting_line(s)
-  -- Ignore PLAYER->MOB if first flag is (P) or (Player)
+  -- Ignore PLAYER -> MOB lines: first flag (P) or (Player)
   local first_flag = s:match("^%s*%(([^)]*)%)")
   if first_flag then
     local f = first_flag:lower()
@@ -54,12 +82,20 @@ local function player_from_fighting_line(s)
       return ""
     end
   end
-  -- Pretitle-aware: tail after "is fighting", then last word
-  local tail = s:match("is fighting%s+(.+)%s*[%.%!%?]%s*$")
+
+  -- Case-insensitive 'is fighting'
+  -- Grab everything after it, then clean trailing punctuation.
+  local tail = s:match("[Ii][Ss]%s+[Ff]ighting%s+(.+)")
   if not tail then return "" end
+
+  -- Trim trailing punctuation/spaces
+  tail = tail:gsub("%s*[%.%!%?]%s*$", "")
+
+  -- Take the LAST token as the character name (drops pretitles)
   local name = tail:match("([%w_'%-]+)%s*$") or ""
-  return trim(name)
+  return (name:gsub("^%s+",""):gsub("%s+$",""))
 end
+
 
 local function send_on_channel(msg)
   if tankOutChan ~= "" then
@@ -67,42 +103,76 @@ local function send_on_channel(msg)
   end
 end
 
--- ========= Handlers (global) =========
+-- ensure tankSelfName is populated from GMCP when we need it
+local function ensure_self_name()
+  if tankSelfName and tankSelfName ~= "" then return end
+  if gmcp then
+    tankSelfName = gmcp("char.base.name") or tankSelfName or ""
+  end
+end
+
+-- ========= Group parsing =========
+-- Parses Aardwolf "group" table rows like:
+-- 201 P+7  Kelaire        58804/87541   70898/74123   91083/91083 ...
+--  91 Cle  Logrom         10064/10064    6535/6535     4983/4983  ...
+function parse_group_line(line)
+  -- ignore header/separator lines
+  if line:find("^%s*Lvl/Gld") or line:find("^%s*%-[%-%s]+$") then
+    return nil
+  end
+
+  -- Primary pattern: <lvl> <class> <name> <HPcur>/<HPmax> ...
+  -- class column can be "P+7", "Cle", etc -> use %S+ to swallow it
+  local rawname, cur, max =
+    line:match("^%s*%d+%s+%S+%s+%*?([%a][%w_'%-]+)%s+(%d+)%s*/%s*(%d+)")
+
+  if not rawname then
+    -- Fallbacks (rare formats). Keep them, but most groups will hit the primary.
+    rawname, cur, max =
+      line:match("%f[%a]%*?([%a][%w_'%-]+)%f[%A].-[%( ](%d+)%s*/%s*(%d+)%s*[%)HhPp]") or
+      line:match("^%s*%*?([%a][%w_'%-]+).-(%d+)%s*/%s*(%d+)%s*$")
+  end
+
+  if not rawname or not cur or not max then return nil end
+
+  local name = rawname:gsub("^%*", "") -- strip leader star
+  cur, max = tonumber(cur), tonumber(max)
+  if not cur or not max or max <= 0 then return nil end
+
+  local pct = math.floor((cur / max) * 100 + 0.5)
+  return { name = name, cur = cur, max = max, pct = pct }
+end
+
+
+
+-- ========= Handlers =========
 function StartTankScan(name, line, wildcards)
   local norm = normalize_channel(wildcards and wildcards.chan)
   if norm == nil then
     return ColourNote("red","", "Usage: tanks [channel]   channel (optional) is spouse | gt | say")
   end
-  tankOutChan = norm or ""  -- "" => local only
+  tankOutChan = norm or ""  -- "" => local-only
 
-  -- place fresh markers every run
-  Send("echo {KELTANK}")
-  Send("look")
-  Send("echo {/KELTANK}")
-end
-
-function SetTankSelfName(name, line, wildcards)
-  local who = wildcards and wildcards.who
-  if not who or who == "" then
-    local current = (tankSelfName ~= "" and tankSelfName) or "(You)"
-    return ColourNote("cyan","", "Tank_Reporter: self name is " .. current ..
-                               "  (set via: tanks me <YourName>)")
-  end
-  tankSelfName = who
-  SetVariable("tank_self_name", tankSelfName)
-  ColourNote("yellow","", "Tank_Reporter: self name set to " .. tankSelfName)
+  -- capture GROUP first; TANK scan starts in OnGroupEnd
+  Send("echo {KELGROUP}")
+  Send("group")
+  Send("echo {/KELGROUP}")
 end
 
 function StopTankScan()
   tankActive = false
   EnableTriggerGroup("TANK_SCAN", false)
+  groupActive = false
+  EnableTriggerGroup("GROUP_SCAN", false)
   ColourNote("silver", "", "Tank scan: stopped.")
   tankOutChan = ""
 end
 
+-- Begin/end markers for TANK
 function OnTankBegin()
   tankCounts = {}
   tankActive = true
+  ensure_self_name()  -- <- make sure tankSelfName is set from GMCP
   EnableTriggerGroup("TANK_SCAN", true)
   local dest = (tankOutChan ~= "" and tankOutChan or "local only")
   ColourNote("yellow","","Tank scan: capturing between markers... (out: "..dest..")")
@@ -112,9 +182,8 @@ function OnTankEnd()
   tankActive = false
   EnableTriggerGroup("TANK_SCAN", false)
 
-  local msg
   if next(tankCounts) == nil then
-    msg = "Tanks: (none detected)"
+    local msg = "Tanks: (none detected)"
     ColourNote("silver","", msg)
     send_on_channel(msg)
     tankOutChan = ""
@@ -123,27 +192,73 @@ function OnTankEnd()
 
   local parts = {}
   for _,entry in ipairs(sorted_counts(tankCounts)) do
-    parts[#parts+1] = string.format("%s (%d)", entry.name, entry.count)
+    local n  = entry.name
+    local hp = groupHP[norm_name(n)]
+    local pct = hp and (tostring(hp.pct) .. "%") or "??%"
+	
+	if hp.pct >= 80 then pctcolor = "@G"
+	elseif hp.pct >=40 and hp.pct <80 then pctcolor = "@Y"
+	else pctcolor = "@R"
+	end
+	
+    parts[#parts+1] = string.format("@x082%s@w(%s%s@W) - @x013%d", n, pctcolor, pct, entry.count)
   end
-  msg = "Tanks: " .. table.concat(parts, ", ")
+  local msg = "@x190Tanks: " .. table.concat(parts, ", ")
 
   ColourNote("lime", "", msg)
   send_on_channel(msg)
   tankOutChan = ""
 end
 
+-- Capture tank lines
 function OnFightLine(name, line, wc)
   if not tankActive then return end
 
   if is_you_line(line) then
-    local who = (tankSelfName ~= "" and tankSelfName) and tankSelfName or "(You)"
-    tankCounts[who] = (tankCounts[who] or 0) + 1
+    local who = (tankSelfName ~= "" and tankSelfName) or "(You)"
+    local key = norm_name(who)
+    local prev = tankCounts[key]
+    local prev_count = (type(prev) == "table") and (prev.count or 0) or (tonumber(prev) or 0)
+    tankCounts[key] = { name = who, count = prev_count + 1 }
     return
   end
 
   local player = player_from_fighting_line(line)
   if player ~= "" then
-    tankCounts[player] = (tankCounts[player] or 0) + 1
+    local key = norm_name(player)
+    -- also keep the display name we last saw for this key
+    tankCounts[key] = { name = player, count = (tankCounts[key] and tankCounts[key].count or 0) + 1 }
+  end
+end
+
+-- Begin/end markers for GROUP
+function OnGroupBegin()
+  groupHP = {}
+  groupActive = true
+  EnableTriggerGroup("GROUP_SCAN", true)
+end
+
+function OnGroupEnd()
+  groupActive = false
+  EnableTriggerGroup("GROUP_SCAN", false)
+
+  -- now start the tank scan
+  Send("echo {KELTANK}")
+  Send("look")
+  Send("echo {/KELTANK}")
+end
+
+function OnGroupLine(name, line, wc)
+  if not groupActive then return end
+  local rec = parse_group_line(line)
+  if rec then
+    -- if group shows "You", remap to your actual name so keys match
+    ensure_self_name()
+    local store_name = rec.name
+    if rec.name:lower() == "you" and tankSelfName ~= "" then
+      store_name = tankSelfName
+    end
+    groupHP[norm_name(store_name)] = { name = store_name, cur = rec.cur, max = rec.max, pct = rec.pct }
   end
 end
 
@@ -151,15 +266,18 @@ end
 function OnPluginInstall()
   tankSelfName = GetVariable("tank_self_name") or ""
   EnableTriggerGroup("TANK_SCAN", false)
-  ColourNote("cyan","", "Tank_Reporter: use 'tanks [channel]' (channel optional: spouse|gt|say). Set your name via 'tanks me <YourName>'.")
+  EnableTriggerGroup("GROUP_SCAN", false)
+  ColourNote("cyan","", "Tank_Reporter: 'tanks [channel]'  (channel optional: spouse|gt|say). 'tanks me <YourName>' to map YOU-lines.")
 end
 
 function OnPluginEnable()
   EnableTriggerGroup("TANK_SCAN", false)
+  EnableTriggerGroup("GROUP_SCAN", false)
 end
 
 function OnPluginDisable()
   EnableTriggerGroup("TANK_SCAN", false)
+  EnableTriggerGroup("GROUP_SCAN", false)
 end
   ]]></script>
 
@@ -172,29 +290,41 @@ end
     <alias script="StartTankScan"
            match="^tanks$"
            enabled="y" regexp="y" sequence="101" ignore_case="y" />
-    <!-- tanks me [name] -->
-    <alias script="SetTankSelfName"
-           match="^tanks me(?:\s+(?<who>[A-Za-z0-9_]+))?$"
-           enabled="y" regexp="y" sequence="102" ignore_case="y" />
   </aliases>
 
   <triggers>
+    <!-- GROUP markers and capture -->
+    <trigger name="TR_GROUP_BEGIN"
+             enabled="y" regexp="y" ignore_case="y"
+             keep_evaluating="y" omit_from_output="n" sequence="80"
+             match="\{KELGROUP\}"
+             script="OnGroupBegin" />
+    <trigger name="TR_GROUP_END"
+             enabled="y" regexp="y" ignore_case="y"
+             keep_evaluating="y" omit_from_output="n" sequence="81"
+             match="\{\/KELGROUP\}"
+             script="OnGroupEnd" />
+    <trigger name="TR_GROUP_CAPTURE"
+             group="GROUP_SCAN" enabled="n" regexp="y" ignore_case="y"
+             keep_evaluating="y" omit_from_output="n" sequence="82"
+             match="\d+\s*/\s*\d+"
+             script="OnGroupLine" />
+
+    <!-- TANK markers and capture -->
     <trigger name="TR_TANK_BEGIN"
              enabled="y" regexp="y" keep_evaluating="y" omit_from_output="n"
              sequence="90"
-             match="^\{KELTANK\}\s*$"
+             match="\{KELTANK\}"
              script="OnTankBegin" />
-
     <trigger name="TR_TANK_END"
              enabled="y" regexp="y" keep_evaluating="y" omit_from_output="n"
              sequence="91"
-             match="^\{\/KELTANK\}\s*$"
+             match="\{\/KELTANK\}"
              script="OnTankEnd" />
-
     <trigger name="TR_TANK_CAPTURE"
-             group="TANK_SCAN" enabled="n" regexp="y"
+             group="TANK_SCAN" enabled="n" regexp="y" ignore_case="y"
              keep_evaluating="y" omit_from_output="n" sequence="100"
-             match="is fighting|is trying to KILL YOU!"
+             match="is fighting|is trying to kill you!"
              script="OnFightLine" />
   </triggers>
 </muclient>
