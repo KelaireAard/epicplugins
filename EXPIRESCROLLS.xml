@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE muclient>
+<muclient>
+<plugin
+   name="Aardwolf_Expiration_Sorter"
+   author="Mendaloth"
+   id="20324f91b0722c698a10f0a6"
+   language="Lua"
+   purpose="Will sort items with timers, which are in your inventory, by expiration."
+   date_written="2011-12-30 22:45:00"
+   requires="4.70"
+   version="1.1"
+   >
+<description trim="y">
+Type 'expiresort" to sort items with timers, which are in your inventory (not in a bag), by expiration.
+</description>
+</plugin>
+ 
+<!--  Triggers  -->
+ 
+<triggers>
+ 
+<trigger
+   enabled="n"
+   match="{invdata}"
+   name="start_inv"
+   omit_from_output="y"
+   sequence="100"
+   send_to="14"
+>
+<send>
+   expiring_inventory = {}
+   EnableTrigger("invdata", true)
+   EnableTrigger("end_inv", true)
+</send>
+</trigger>
+ 
+<trigger
+   enabled="n"
+   match="{/invdata}"
+   name="end_inv"
+   omit_from_output="y"
+   sequence="100"
+   send_to="14"
+>
+<send>
+   ReorderExpiringItems()
+   EnableTrigger("invdata", false)
+   EnableTrigger("end_inv", false)
+</send>
+</trigger>
+ 
+<trigger
+   enabled="n"
+   match="^(\d+),(\w*),(.+),(\d+),(\d+),([01]),(-?\d+),(-?\d+)"
+   name="invdata"
+   omit_from_output="y"
+   regexp="y"
+   sequence="100"
+   send_to="14"
+   script="parseInvdata"
+>
+</trigger>
+</triggers>
+ 
+<aliases>
+ 
+<alias
+   match="^expiresort$"
+   regexp="y"
+   enabled="y"
+   sequence="100"
+   ignore_case="y"
+   send_to="12"
+>
+<send>
+   EnableTrigger("start_inv", true)
+   SendNoEcho("invdata")
+</send>
+</alias>
+ 
+</aliases>
+ 
+<script>
+<![CDATA[
+ 
+ 
+expiring_inventory = {}
+ 
+function parseInvdata(name, line, wildcards, styles)
+    local item_timer = wildcards[8] --
+    --Note("The timer for " .. wildcards[1] .. " is " .. item_timer)
+   
+    if (item_timer ~= "-1") then -- -1 is no timer
+        table.insert(expiring_inventory, {timer = tonumber(item_timer), objectid = wildcards[1]})
+    end
+   
+   
+end
+ 
+function ReorderExpiringItems()
+    require "tprint"
+    table.sort(expiring_inventory, function(a,b) return a.timer<b.timer end)
+   
+    --tprint(expiring_inventory)
+   
+    if (#expiring_inventory >= 425) then
+        Note("You have more than 425 items with timers.  Don't want to spam the MUD that much.  Try again when you have less.")
+    else
+        for k,v in ipairs(expiring_inventory) do
+       
+            --Note("Will now send '" .. "give " .. v.objectid .. " self")
+            SendNoEcho("give " .. v.objectid .. " self")
+           
+        end
+        Note("Reordering done.  You reordered " .. #expiring_inventory .. " items")
+    end
+   
+end
+ 
+]]>
+</script>
+</muclient>
