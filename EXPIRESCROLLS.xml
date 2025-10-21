@@ -2,8 +2,8 @@
 <!DOCTYPE muclient>
 <muclient>
 <plugin
-   name="Aardwolf_Expiration_Sorter"
-   author="Mendaloth"
+   name="Epic_ScrollSorter"
+   author="Mendaloth/Kelaire"
    id="20324f91b0722c698a10f0a6"
    language="Lua"
    purpose="Will sort items with timers, which are in your inventory, by expiration."
@@ -87,6 +87,7 @@ Type 'expiresort' to sort items with timers, which are in your inventory (not in
 expiring_inventory = {}
 
 -- Use a batch to not spam/disconnect
+-- Added function to send 25 commands every 5 seconds. Got rid of limits this way, without overspamming MUD
 local give_idx = 1                -- current position in expiring_inventory
 local batch_size = 25             -- how many 'give' commands per batch
 local batch_delay_sec = 5.0       -- delay between batches
@@ -153,3 +154,4 @@ end
 ]]>
 </script>
 </muclient>
+
