@@ -13,7 +13,7 @@
    purpose="WIMP - Warrior Index and Metrics Parser"
    date_written="2024-01-20"
    requires="5.07"
-   version="1.70"
+   version="1.71"
    >
 
  <description trim="n">
@@ -643,6 +643,7 @@ end
 
 
 </muclient>
+
 
 
 
