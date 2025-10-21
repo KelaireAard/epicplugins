@@ -13,7 +13,7 @@
    purpose="WIMP - Warrior Index and Metrics Parser"
    date_written="2024-01-20"
    requires="5.07"
-   version="1.71"
+   version="1.72"
    >
 
  <description trim="n">
@@ -257,7 +257,7 @@ end
 function strip_tags(s)
   s = s:gsub("%*AFK%*", "")
   s = s:gsub("%(OPK%)", "")
-  s = s:gsub("%(HARDCORE%)", "")
+  s = s:gsub("%(HARDCORE%)", "")  s = s:gsub("%(Linkdead%)", "")
   s = s:gsub("%[Advisor%]", "")
   s = s:gsub("%[Helper%]", "")
   return trim(s)
