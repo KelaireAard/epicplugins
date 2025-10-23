@@ -9,7 +9,7 @@
     purpose="Parse look output and report who is tanking mobs (including YOU), showing each tank's HP% from group"
     date_written="2025-10-21"
     requires="4.94"
-    version="1.90"
+    version="1.91"
     save_state="y">
   </plugin>
 
@@ -30,7 +30,20 @@ groupHP       = {}                     -- [lower(name)] = {cur=number,max=number
 -- ========= Helpers =========
 local function trim(s) return (s:gsub("^%s+",""):gsub("%s+$","")) end
 
-local function sorted_counts(tbl)
+-- Sort by HP% (desc), then mobs tanked (desc), then name (asc)
+local function sorted_counts(tbl, hpmap)
+  local function norm_key(s)
+    s = (s or "")
+    s = s:gsub("[%s%p]+$", "")
+    s = s:gsub("[^%w_'%-]", "")
+    return s:lower()
+  end
+
+  local function pct_for(entry)
+    local rec = hpmap and hpmap[norm_key(entry.name or entry.key)]
+    return (rec and tonumber(rec.pct)) or -1
+  end
+
   local arr = {}
   for k, v in pairs(tbl) do
     local name, count
@@ -38,19 +51,21 @@ local function sorted_counts(tbl)
       name  = v.name or k
       count = v.count or 0
     else
-      -- v is a number (old style)
       name  = k
       count = tonumber(v) or 0
     end
     arr[#arr+1] = { key = k, name = name, count = count }
   end
+
   table.sort(arr, function(a, b)
-    if a.count ~= b.count then return a.count > b.count end
-    return a.name:lower() < b.name:lower()
+    local ap, bp = pct_for(a), pct_for(b)
+    if ap ~= bp then return ap > bp end          -- 1) HP% high → low
+    if a.count ~= b.count then return a.count > b.count end -- 2) mobs tanked high → low
+    return a.name:lower() < b.name:lower()       -- 3) name A→Z
   end)
+
   return arr
 end
-
 
 local function normalize_channel(s)
   if not s or s == "" then return "" end  -- no arg => local only
@@ -191,7 +206,7 @@ function OnTankEnd()
   end
 
   local parts = {}
-  for _,entry in ipairs(sorted_counts(tankCounts)) do
+  for _, entry in ipairs(sorted_counts(tankCounts, groupHP)) do
     local n  = entry.name
     local hp = groupHP[norm_name(n)]
     local pct = hp and (tostring(hp.pct) .. "%") or "??%"
@@ -262,6 +277,11 @@ function OnGroupLine(name, line, wc)
   end
 end
 
+function showHelp()
+  ColourNote("tanks -- reports who is tanking to you")
+  ColourNote("tanks gt|spouse|say -- reports who is tanking to specified channel")
+end
+
 -- ========= Lifecycle =========
 function OnPluginInstall()
   tankSelfName = GetVariable("tank_self_name") or ""
@@ -290,6 +310,7 @@ end
     <alias script="StartTankScan"
            match="^tanks$"
            enabled="y" regexp="y" sequence="101" ignore_case="y" />
+    <alias script="showHelp" match="^tanks help$" enabled="y" regexp="y" sequence="101" ignore_case="y" />
   </aliases>
 
   <triggers>
