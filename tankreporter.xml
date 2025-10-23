@@ -9,7 +9,7 @@
     purpose="Parse look output and report who is tanking mobs (including YOU), showing each tank's HP% from group"
     date_written="2025-10-21"
     requires="4.94"
-    version="1.91"
+    version="1.92"
     save_state="y">
   </plugin>
 
@@ -59,7 +59,7 @@ local function sorted_counts(tbl, hpmap)
 
   table.sort(arr, function(a, b)
     local ap, bp = pct_for(a), pct_for(b)
-    if ap ~= bp then return ap > bp end          -- 1) HP% high → low
+    if ap ~= bp then return ap < bp end          -- 1) HP% low -> high
     if a.count ~= b.count then return a.count > b.count end -- 2) mobs tanked high → low
     return a.name:lower() < b.name:lower()       -- 3) name A→Z
   end)
