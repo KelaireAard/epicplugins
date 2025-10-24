@@ -1,0 +1,19 @@
+--------------------------------------------------------------------------------
+                       [Warrior Index and Metrics Parser]
+--------------------------------------------------------------------------------
+This plugin will attempt to give you some idea of group strength for epics.
+
+Strength Meter: 0 - 3 Newb, 4 - 5 Weak, 6 - 8 Average, 9 - 10 Strong, 11 - 12 Big Boy
+
+wimp help - Brings up this help menu
+wimp check - Runs the swho commands to gather group data
+wimp total - Shows the group total, number and average
+wimp detail - Displays the table of data
+wimp report - Send info to gt
+wimp classes - Shows group, sorted by class. Melee on top
+
+wimp update check - Check for an updated version
+wimp update install - Install latest version
+wimp reload - reload plugin
+
+--------------------------------------------------------------------------------
