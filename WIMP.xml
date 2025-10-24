@@ -6,7 +6,7 @@
 
 <muclient>
 <plugin
-   name="WIMP"
+   name="Utility_WIMP"
    author="Kelaire"
    id="314f356e3b6cba4efbf7baf9"
    language="Lua"
@@ -257,7 +257,8 @@ end
 function strip_tags(s)
   s = s:gsub("%*AFK%*", "")
   s = s:gsub("%(OPK%)", "")
-  s = s:gsub("%(HARDCORE%)", "")  s = s:gsub("%(Linkdead%)", "")
+  s = s:gsub("%(HARDCORE%)", "")
+  s = s:gsub("%(Linkdead%)", "")
   s = s:gsub("%[Advisor%]", "")
   s = s:gsub("%[Helper%]", "")
   return trim(s)
@@ -643,6 +644,7 @@ end
 
 
 </muclient>
+
 
 
 
