@@ -3,7 +3,7 @@
  
 <muclient>
 <plugin
-   name="AuraCounter"
+   name="Genie_AuraCounter"
    author="Kelaire"
    id="f47cdbcf42806f96b5e962bd"
    language="Lua"
@@ -121,4 +121,5 @@ end
 ]]>
 </script>
  
+
 </muclient>
