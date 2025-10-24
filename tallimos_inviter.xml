@@ -7,7 +7,7 @@
 
 <muclient>
 <plugin
-   name="Tallimos_AutoInviter"
+   name="Utility_AutoInviter"
    author="Tallimos"
    id="2dae6923b0384dba4ddff81f"
    language="Lua"
@@ -1862,4 +1862,5 @@ end
 
 ]]>
 </script> 
+
 </muclient>
