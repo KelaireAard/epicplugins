@@ -10,7 +10,7 @@
    save_state="y"
    date_written="2025-10-10 09:00:00"
    requires="4.00"
-   version="1.5"
+   version="1.55"
    >
 </plugin>
 <!-- Alias
@@ -131,7 +131,7 @@ function getName(Data, pretty)
     name = name:gsub('_',' '):upper()
   end
   return name
-end  function center_text(str, width)  local pad = (width - #str) / 2  if pad < 0 then pad = 0 end  return string.rep(" ", math.floor(pad)) .. str .. string.rep(" ", math.ceil(pad))end
+end  function center_text(str, width)  local pad = (width - #str) / 2  if pad < 0 then pad = 0 end  return string.rep(" ", math.floor(pad)) .. str .. string.rep(" ", math.ceil(pad))end
 
 
 function pmMain(n,l,wc)
@@ -181,7 +181,7 @@ function EPMCheck()
       if type(k) == "string" and k:lower() == lk then return v end
     end
   end
-
+ 
   if EPMVar["Initialized"] == "yes" then
     local groups = {}
 
@@ -213,19 +213,31 @@ function EPMCheck()
     end
 
     -- sort categories then print (unchanged) ...
-    local catnames = {}
-    for cat,_ in pairs(groups) do table.insert(catnames, cat) end
-    table.sort(catnames, function(a,b) return a:lower() < b:lower() end)
+	local order = { OC=1, Winds=2, IceFall=3, Inferno=4, Genie=5, Trans=6, Titan=7, Terra=8, SKD=9, Utility=98, Default=99 }
+	local colors = { OC="White", Winds="Yellow", IceFall="Cyan", Inferno="DarkRed", Genie="Magenta", Trans="Blue", Terra="DarkYellow", Titan="Red" } 
+
+	local catnames = {}
+	for cat,_ in pairs(groups) do table.insert(catnames, cat) end
+    table.sort(catnames, function(a,b)
+      local ra = order[a] or 50
+      local rb = order[b] or 50
+      if ra ~= rb then return ra < rb end
+      return a:lower() < b:lower()
+    end)
+    
+    --table.sort(catnames, function(a,b) return a:lower() < b:lower() end)
 
     ColourNote("White", "slateblue",
-	"        [List of maintained plugins]        ")    local firstRun = 0
+	"        [List of maintained plugins]        ")
+	--                                                      123456789012345678901234567890123456789012
+	ColourNote("White", "slateblue", " ", "slateblue", "", "To see information about a plugin, click  ","White", "slateblue", " ")
+	ColourNote("White", "slateblue", " ", "slateblue", "", " on the plugin name.                      ","White", "slateblue", " ")    local firstRun = 0
 
     for _, cat in ipairs(catnames) do
       table.sort(groups[cat], function(a,b)
         return a.script_short:lower() < b.script_short:lower()
-      end)		  --if firstRun == 1 then
-	    --ColourNote("White", "slateblue"," ","White", "","                                          ","White","slateblue"," "	  --else	  --  firstRun = 1	  --end
-      ColourNote("White", "slateblue","  ","White", "slateblue", center_text(string.format("==[ %s ]==", cat), 40),"White", "slateblue","  ")
+      end)	
+      ColourNote("White", "slateblue","  ","White", "slateblue", center_text(string.format("==[ %s ]==", cat), 40),"White", "slateblue","  ")
 
       for _, e in ipairs(groups[cat]) do
         local num  = e.num
@@ -233,7 +245,7 @@ function EPMCheck()
 
         if IsPluginInstalled(EPMVar["cache"][num]["PluginId"]) then
           local gh  = tonumber(EPMVar["cache"][num]["GHVersion"])
-          local loc = tonumber(EPMVar["cache"][num]["LocalVersion"])		  		  if loc >= gh then            ColourTell("White", "slateblue"," ","Cyan", "", " [", "Green", "", "x", "Cyan", "", "] ")          else            ColourTell("White", "slateblue"," ","Cyan", "", " [ ] ")          end                    Hyperlink("epm help "..num, string.format("%-20s", script_short),	             	"Plugin Information", "SkyBlue", "black", 0, 1)		
+          local loc = tonumber(EPMVar["cache"][num]["LocalVersion"])		  		  if loc >= gh then            ColourTell("White", "slateblue"," ","Cyan", "", " [", "Green", "", "x", "Cyan", "", "] ")          else            ColourTell("White", "slateblue"," ","Cyan", "", " [ ] ")          end                    Hyperlink("epm help "..num, string.format("%-20s", script_short),	             	"Plugin Information", "SkyBlue", "black", 0, 1)		
           if not gh or not loc then
             ColourNote("Red","","EPM: Version number not cached, please run command again")
             if EPMVar["Debug"] == "yes" then tprint(EPMVar["cache"]) end
@@ -244,13 +256,13 @@ function EPMCheck()
           else
             Hyperlink("epm reload "..num, "[Reload]", "Reload plugin", "Teal", "black", 0, 1)
           end
-          Hyperlink("epm remove "..num, "[Remove]", "Remove plugin", "Red", "black", 0, 1)		  ColourTell("White",""," ")
+          Hyperlink("epm remove "..num, "[Remove]", "Remove plugin", "Red", "black", 0, 1)		  ColourTell("White",""," ")
           ColourTell("White", "slateblue"," ")		  print("")
-        else		  ColourTell("White", "slateblue"," ","Cyan", "", " [ ] ")		  Hyperlink("epm help "..num, string.format("%-20s", script_short),	             	"Plugin Information", "SkyBlue", "black", 0, 1)
-          Hyperlink("epm install "..num, "[Install]", "Install Plugin", "DarkOrange", "black", 0, 1)		  ColourTell("White","","        ")
+        else		  ColourTell("White", "slateblue"," ","Cyan", "", " [ ] ")		  Hyperlink("epm help "..num, string.format("%-20s", script_short),	             	"Plugin Information", "SkyBlue", "black", 0, 1)
+          Hyperlink("epm install "..num, "[Install]", "Install Plugin", "DarkOrange", "black", 0, 1)		  ColourTell("White","","        ")
           ColourTell("White", "slateblue"," ")		  print("")
         end
-	  end
+	  end
     end
 
     ColourNote("White", "slateblue",
