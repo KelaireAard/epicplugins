@@ -7,7 +7,7 @@
 
 <muclient>
 <plugin
-   name="Epic_IFWestHelper"
+   name="IceFall_IFWestHelper"
    author="Kelaire"
    id="90631ed8325fde54c5732d59"
    language="Lua"
@@ -531,4 +531,5 @@ end
 </script>
 
 </muclient>
+
 
