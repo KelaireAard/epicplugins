@@ -11,7 +11,7 @@
    save_state="y"
    date_written="2025-10-23"
    requires="4.00"
-   version="1.00"
+   version="1.01"
    >
  
 </plugin>
@@ -60,6 +60,18 @@
    sequence="100"
   >
   </trigger>
+  <trigger
+   enabled="y"
+   match="Blizzard of sand gives Golden Sand to (.*)\."
+   regexp="y"
+   sequence="100"
+   send_to="12"
+  >
+  <send>
+    gtell Sand given to %1
+  </send>
+  </trigger>
+  
 </triggers>
  
 <!--  Aliases  -->
@@ -98,7 +110,7 @@ function endCapture()
   yellow = tonumber(GetVariable("YELLOW_AURA"))
  
   if red > 0 or yellow > 0 or blue > 0 then
-    Send("gtell @W[@RRed@W: "..red.."@W]  [@YYellow@W: @W"..yellow.."@W]  [@BBlue@W: "..blue.."@W]  @x208&lt;&lt; @WTotal of "..red+yellow+blue.." @x208>>@w") 
+    Send("gtell @W[@RRed@W: "..red.."@W]  [@YYellow@W: @W"..yellow.."@W]  [@BBlue@W: "..blue.."@W]  @x208<< @WTotal of "..red+yellow+blue.." @x208>>@w") 
   else
     Send("gtell @RNo Auras found.@w")
   end
@@ -121,5 +133,4 @@ end
 ]]>
 </script>
  
-
 </muclient>
