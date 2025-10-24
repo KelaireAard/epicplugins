@@ -4,7 +4,7 @@
 <!-- MuClient version 0.00 -->
 <muclient>
 <plugin
-   name="GenieMazeDirections"
+   name="Genie_MazeDirections"
    author="Icecool"
    id="0e47ad0db65663674f9d3d13"
    language="Lua"
@@ -82,4 +82,5 @@ end
 ]]>
 
 </script>
+
 </muclient>
