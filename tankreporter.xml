@@ -9,7 +9,7 @@
     purpose="Parse look output and report who is tanking mobs (including YOU), showing each tank's HP% from group"
     date_written="2025-10-21"
     requires="4.94"
-    version="1.94"
+    version="1.95"
     save_state="y">
   </plugin>
 
@@ -217,7 +217,7 @@ function OnTankEnd()
 	else pctcolor = "@R"
 	end
 	
-    parts[#parts+1] = string.format("@x082%s@w(%s%s@W) - @x013%d", n, pctcolor, pct, entry.count)
+    parts[#parts+1] = string.format("@x013%d @W- @x153%s@w(%s%s@W)", entry.count, n, pctcolor, pct)
   end
   local msg = "@x190Tanks: " .. table.concat(parts, ", ")
 
@@ -360,4 +360,3 @@ end
              match=".*" />
   </triggers>
 </muclient>
-
