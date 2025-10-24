@@ -2,7 +2,7 @@
 <!DOCTYPE muclient>
 <muclient>
   <plugin
-    name="Tank_Reporter"
+    name="Utility_TankReporter"
     author="Kelaire"
     id="edb096f13f8ae3efa7e5124b"
     language="Lua"
@@ -360,3 +360,4 @@ end
              match=".*" />
   </triggers>
 </muclient>
+
