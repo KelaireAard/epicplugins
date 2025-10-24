@@ -10,7 +10,7 @@
    save_state="y"
    date_written="2025-10-10 09:00:00"
    requires="4.00"
-   version="1.2"
+   version="1.3"
    >
 </plugin>
 <!-- Alias
@@ -473,8 +473,20 @@ function raw_get_cache(retval, page, status, headers, full_status, request_url)
 	  end
 
 	  -- rawname: from page, else fall back to WName
-	  rawname = page:match('%s+[Nn][Aa][Mm][Ee]="([%w_]+)"') or WName
-	  if EPMVar["Debug"] == "yes" then
+	  --rawname = page:match('%s+[Nn][Aa][Mm][Ee]="([%w_]+)"') or WName
+	  --if EPMVar["Debug"] == "yes" then
+	  --  ColourNote("Red","","EPM: set rawname:"..tostring(rawname))
+	  --end
+	  
+      -- grab Name="..." (case-insensitive), fallback to WName
+	  local nameval = page:match('%s+[Nn][Aa][Mm][Ee]%s*=%s*"%s*([^"]-)%s*"') or WName
+
+	  -- split at the first underscore
+	  local cat, rn = nameval:match('^([^_]+)_(.+)$')
+	  local category, rawname = cat and cat or "Default", rn and rn or nameval
+
+	  if EPMVar["Debug"] == "yes" then 
+	    ColourNote("Red","","EPM: set category:"..tostring(category))
 	    ColourNote("Red","","EPM: set rawname:"..tostring(rawname))
 	  end
 
@@ -508,6 +520,19 @@ function raw_get_cache(retval, page, status, headers, full_status, request_url)
 	  if EPMVar["Debug"] == "yes" then
 	    ColourNote("Red","","EPM: set local version:"..tostring(lVersion))
 	  end
+	  
+	  -- Get the help command?
+	  --helpCmd = page:match('[Mm][Aa][Tt][Cc][Hh]%s*=%s*"%^?%s*(.-help)%s*%$?%s*"')
+      --       or page:match("[Mm][Aa][Tt][Cc][Hh]%s*=%s*'%^?%s*(.-help)%s*%$?%s*'")
+
+      -- normalize whitespace if found (optional)
+      --if helpCmd then
+      --  helpCmd = (helpCmd:gsub("%s+", " ")):gsub("^%s+", ""):gsub("%s+$", "")
+      --end
+	  
+	  --if EPMVar["Debug"] == "yes" then
+	  --  ColourNote("Red","","EPM: set help command to:"..tostring(helpCmd))
+	  --end
 
 	  -- long name: safe fallback even if rawname is nil
 	  local longNameFallback = (GetInfo and GetInfo(60) or "") .. (rawname or "plugin") .. ".xml"
