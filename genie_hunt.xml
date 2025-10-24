@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE muclient>
+<!-- Saved on Thursday, December 29, 2016, 11:46 PM -->
+<!-- MuClient version 0.00 -->
+<muclient>
+<plugin
+   name="GenieMazeDirections"
+   author="Icecool"
+   id="0e47ad0db65663674f9d3d13"
+   language="Lua"
+   purpose="Does the hunting to find the directions for the Genie Maze"
+   date_written="2017-08-03 00:00:00"
+   save_state="y"
+   requires="0.00"
+   version="1.00"
+   >
+
+</plugin>
+
+<aliases>
+  <alias
+    match="^(llook|sandhunt)$"
+    script="aliasLoopLook" name="aliasLoopLook" keep_evaluating="y" enabled="y" regexp="y" send_to="12" sequence="100">
+  </alias>
+</aliases> 
+
+<triggers>
+  <trigger
+    match="^(\s+)?\-\s+\w+\,\s+Sat\sApr\s+\d+\s+\d+:\d+:(?<seconds>\d+)\s+\d+\.$"
+    name="findGenieLoop" enabled="n" group="GenieLoops" script="findGenieLoop" omit_from_output="y" regexp="y" sequence="100"
+  > </trigger>
+  <trigger
+    match="NOGRAF HERE!"
+    name="GenieGrafGagNoGraf" enabled="n" group="GenieLoops" omit_from_output="y" regexp="n" sequence="100"
+  > </trigger>
+  <trigger
+    match="test"
+    name="GenieGrafGagTest" enabled="n" group="GenieLoops" omit_from_output="y" regexp="n" sequence="100"
+  > </trigger>
+</triggers>
+
+<!--  Get our standard constants -->
+
+<include name="constants.lua"/>
+
+<!--  Script  -->
+<script>
+<![CDATA[
+dofile(GetInfo(60) .. "aardwolf_colors.lua") -- Used to support Aard Colors for the cnote() function
+-- Basic print function that supports aard, xterm, and ANSI color codes [idea from Durel's Inventory script]
+function cnote(string)
+  AnsiNote(stylesToANSI(ColoursToStyles(string)))
+end 
+
+function aliasLoopLook( name, lines, args )
+  cnote( "@D[@MGenie@D] @C>> @WProcessing Loop Data @C<<@w" )
+  Note()
+  EnableTriggerGroup( "GenieLoops", true )
+  SendNoEcho( "look graffiti" )
+end
+
+function findGenieLoop( name, lines, args )
+  local sec = tonumber(args.seconds)
+  if sec == 22 then
+    SendNoEcho( "gt @D[@MGenie@D] @C>> @GLoop 1 is here. @C<<@w" )
+  elseif sec == 30 then
+    SendNoEcho( "gt @D[@MGenie@D] @C>> @GLoop 2 is here. @C<<@w" )
+  elseif sec == 32 then
+    SendNoEcho( "gt @D[@MGenie@D] @C>> @GLoop 3 is here. @C<<@w" )
+  elseif sec == 35 then
+    SendNoEcho( "gt @D[@MGenie@D] @C>> @GLoop 4 is here. @C<<@w" )
+  elseif sec == 37 then
+    SendNoEcho( "gt @D[@MGenie@D] @C>> @GLoop 5 is here. @C<<@w" )
+  elseif sec == 39 then
+    SendNoEcho( "gt @D[@MGenie@D] @C>> @GLoop @RTRAP@G is here. @C<<@w" )
+  else
+    SendNoEcho( "gt @D[@MGenie@D] @C>> @RERROR!! This is not a loop. @C<<@w" )
+  end
+  EnableTrigger( "findGenieLoop", false )
+end
+
+]]>
+
+</script>
+</muclient>
