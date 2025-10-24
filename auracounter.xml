@@ -11,7 +11,7 @@
    save_state="y"
    date_written="2025-10-23"
    requires="4.00"
-   version="1.02"
+   version="1.03"
    >
  
 </plugin>
@@ -133,4 +133,5 @@ end
 ]]>
 </script>
  
+
 </muclient>
