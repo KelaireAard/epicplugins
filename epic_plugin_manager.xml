@@ -10,7 +10,7 @@
    save_state="y"
    date_written="2025-10-10 09:00:00"
    requires="4.00"
-   version="1.56"
+   version="1.57"
    >
 </plugin>
 <!-- Alias
@@ -230,8 +230,8 @@ function EPMCheck()
     ColourNote("White", "slateblue",
 	"        [List of maintained plugins]        ")
 	--                                                      123456789012345678901234567890123456789012
-	ColourNote("White", "slateblue", " ", "white", "", "To see information about a plugin, click  ","White", "slateblue", " ")
-	ColourNote("White", "slateblue", " ", "white", "", " on the plugin name.                      ","White", "slateblue", " ")    local firstRun = 0
+	ColourNote("White", "slateblue", " ", "cyan", "", "To see information about a plugin, click  ","White", "slateblue", " ")
+	ColourNote("White", "slateblue", " ", "cyan", "", " on the plugin name.                      ","White", "slateblue", " ")    local firstRun = 0
 
     for _, cat in ipairs(catnames) do
       table.sort(groups[cat], function(a,b)
