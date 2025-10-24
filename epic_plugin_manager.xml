@@ -10,7 +10,7 @@
    save_state="y"
    date_written="2025-10-10 09:00:00"
    requires="4.00"
-   version="1.55"
+   version="1.56"
    >
 </plugin>
 <!-- Alias
@@ -230,8 +230,8 @@ function EPMCheck()
     ColourNote("White", "slateblue",
 	"        [List of maintained plugins]        ")
 	--                                                      123456789012345678901234567890123456789012
-	ColourNote("White", "slateblue", " ", "slateblue", "", "To see information about a plugin, click  ","White", "slateblue", " ")
-	ColourNote("White", "slateblue", " ", "slateblue", "", " on the plugin name.                      ","White", "slateblue", " ")    local firstRun = 0
+	ColourNote("White", "slateblue", " ", "white", "", "To see information about a plugin, click  ","White", "slateblue", " ")
+	ColourNote("White", "slateblue", " ", "white", "", " on the plugin name.                      ","White", "slateblue", " ")    local firstRun = 0
 
     for _, cat in ipairs(catnames) do
       table.sort(groups[cat], function(a,b)
@@ -245,7 +245,7 @@ function EPMCheck()
 
         if IsPluginInstalled(EPMVar["cache"][num]["PluginId"]) then
           local gh  = tonumber(EPMVar["cache"][num]["GHVersion"])
-          local loc = tonumber(EPMVar["cache"][num]["LocalVersion"])		  		  if loc >= gh then            ColourTell("White", "slateblue"," ","Cyan", "", " [", "Green", "", "x", "Cyan", "", "] ")          else            ColourTell("White", "slateblue"," ","Cyan", "", " [ ] ")          end                    Hyperlink("epm help "..num, string.format("%-20s", script_short),	             	"Plugin Information", "SkyBlue", "black", 0, 1)		
+          local loc = tonumber(EPMVar["cache"][num]["LocalVersion"])		  		  if loc >= gh then            ColourTell("White", "slateblue"," ","Cyan", "", " [", "Green", "", "x", "Cyan", "", "] ")          else            ColourTell("White", "slateblue"," ","Cyan", "", " [", "Yellow", "", "x", "Cyan", "", "] ")          end                    Hyperlink("epm help "..num, string.format("%-20s", script_short),	             	"Plugin Information", "SkyBlue", "black", 0, 1)		
           if not gh or not loc then
             ColourNote("Red","","EPM: Version number not cached, please run command again")
             if EPMVar["Debug"] == "yes" then tprint(EPMVar["cache"]) end
