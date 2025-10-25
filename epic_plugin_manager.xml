@@ -10,7 +10,7 @@
    save_state="y"
    date_written="2025-10-10 09:00:00"
    requires="4.00"
-   version="1.57"
+   version="1.58"
    >
 </plugin>
 <!-- Alias
@@ -213,9 +213,8 @@ function EPMCheck()
     end
 
     -- sort categories then print (unchanged) ...
-	local order = { OC=1, Winds=2, IceFall=3, Inferno=4, Genie=5, Trans=6, Titan=7, Terra=8, SKD=9, Utility=98, Default=99 }
-	local colors = { OC="White", Winds="Yellow", IceFall="Cyan", Inferno="DarkRed", Genie="Magenta", Trans="Blue", Terra="DarkYellow", Titan="Red" } 
-
+	local order = { Self = 1, OC=2, Winds=3, IceFall=4, Inferno=5, Genie=6, Trans=7, Titan=8, Terra=9, SKD=10, Utility=98, Default=99 }
+	
 	local catnames = {}
 	for cat,_ in pairs(groups) do table.insert(catnames, cat) end
     table.sort(catnames, function(a,b)
@@ -685,7 +684,7 @@ function ShowHelp(PID)
     ColourNote("Red","","EPM: | epm update <number>     - updates plugin with number from epm check  |")
     ColourNote("Red","","EPM: | epm reload <number>     - reloads plugin with number from epm check  |")
     ColourNote("Red","","EPM: | epm install <number>    - installs plugin with number from epm check |")
-    ColourNote("Red","","EPM: | epm remove <number>     - removes plugin with number from epm check  |")
+    ColourNote("Red","","EPM: | epm remove <number>     - removes plugin with number from epm check  |")	ColourNote("Red","","EPM: |                                                                      |")	ColourNote("Red","","EPM: | For additional assistance, please join the Discord!                  |")	ColourNote("Red","","EPM: | https://discord.gg/vQz5cqwqxv                                        |")
     ColourNote("Red","","EPM: +----------------------------------------------------------------------+")
     return
   end
