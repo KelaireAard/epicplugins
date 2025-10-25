@@ -15,7 +15,7 @@ commentz
    author="Endymion"
    id="4b128e4e3d76f0a2bda4b0ed"
    language="Lua"
-   purpose="Winds epic stuff."
+   purpose="Winds epic helper - command for words, item counter for accept, other utilities."
    date_written="2018-01-24 20:02:50"
    requires="4.30"
    version="1.2"
@@ -1059,5 +1059,6 @@ end
 </script>
 
 </muclient>
+
 
 
