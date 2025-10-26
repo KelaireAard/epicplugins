@@ -8,14 +8,14 @@
 <muclient>
 <plugin
    name="Utility_AutoInviter"
-   author="Tallimos"
+   author="Tallimos/Kelaire"
    id="2dae6923b0384dba4ddff81f"
    language="Lua"
    purpose="Group auto inviter with Blacklist and Power User options"
    save_state="y"
    date_written="2020-12-04 09:12:45"
    requires="4.37"
-   version="1.62"
+   version="1.63"
    >
 
 </plugin>
@@ -434,7 +434,7 @@ function DisableInviter()
 end -- DisableInviter
 
 function Invite(name, line, wc)
-	user = string.lower(wc[1])
+	user = string.lower(wc[#wc])
 	keyword = string.lower(wc[2])
 	user2 = string.gsub (user, "^.", string.upper)
 	
@@ -1862,5 +1862,4 @@ end
 
 ]]>
 </script> 
-
 </muclient>
