@@ -15,7 +15,7 @@
    save_state="y"
    date_written="2020-12-04 09:12:45"
    requires="4.37"
-   version="1.65"
+   version="1.66"
    >
 
 </plugin>
@@ -109,7 +109,7 @@
 	</trigger>
 	<trigger
 		group="AutoInviter"
-		match="^(\w+) tells you \'(.*?)\'$"
+		match="^(?:\w+\s+)?(\w+)\s+tells you\s+'(.*?)'$"
 		name="Tells"
 		script="Invite"
 		sequence="100"
