@@ -15,7 +15,7 @@
    save_state="y"
    date_written="2020-12-04 09:12:45"
    requires="4.37"
-   version="1.63"
+   version="1.64"
    >
 
 </plugin>
@@ -434,7 +434,7 @@ function DisableInviter()
 end -- DisableInviter
 
 function Invite(name, line, wc)
-	user = string.lower(wc[#wc])
+	user = wc[1]:match("([^%s]+)$")
 	keyword = string.lower(wc[2])
 	user2 = string.gsub (user, "^.", string.upper)
 	
