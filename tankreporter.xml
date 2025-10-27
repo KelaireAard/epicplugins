@@ -2,14 +2,14 @@
 <!DOCTYPE muclient>
 <muclient>
   <plugin
-    name="Tank_Reporter"
+    name="Utility_TankReporter"
     author="Kelaire"
     id="edb096f13f8ae3efa7e5124b"
     language="Lua"
     purpose="Parse look output and report who is tanking mobs (including YOU), showing each tank's HP% from group"
     date_written="2025-10-21"
     requires="4.94"
-    version="1.93"
+    version="1.95"
     save_state="y">
   </plugin>
 
@@ -170,9 +170,6 @@ function StartTankScan(name, line, wildcards)
   tankOutChan = norm or ""  -- "" => local-only
 
   -- capture GROUP first; TANK scan starts in OnGroupEnd
-  --[[Send("echo {KELGROUP}")
-  Send("group")
-  Send("echo {/KELGROUP}") ]]
   SendNoEcho("echo {KELGROUP}")
   SendNoEcho("group")
   SendNoEcho("echo {/KELGROUP}")
@@ -220,7 +217,7 @@ function OnTankEnd()
 	else pctcolor = "@R"
 	end
 	
-    parts[#parts+1] = string.format("@x082%s@w(%s%s@W) - @x013%d", n, pctcolor, pct, entry.count)
+    parts[#parts+1] = string.format("@x013%d @W- @x153%s@w(%s%s@W)", entry.count, n, pctcolor, pct)
   end
   local msg = "@x190Tanks: " .. table.concat(parts, ", ")
 
@@ -263,9 +260,6 @@ function OnGroupEnd()
   EnableTriggerGroup("GROUP_SCAN", false)
 
   -- now start the tank scan
-  --[[ Send("echo {KELTANK}")
-  Send("look")
-  Send("echo {/KELTANK}") ]]
   SendNoEcho("echo {KELTANK}")
   SendNoEcho("look")
   SendNoEcho("echo {/KELTANK}")
@@ -326,12 +320,12 @@ end
     <trigger name="TR_GROUP_BEGIN"
              enabled="y" regexp="y" ignore_case="y"
              keep_evaluating="y" omit_from_output="y" sequence="80"
-             match="\{KELGROUP\}"
+             match="^\{KELGROUP\}"
              script="OnGroupBegin" />
     <trigger name="TR_GROUP_END"
              enabled="y" regexp="y" ignore_case="y"
              keep_evaluating="y" omit_from_output="y" sequence="81"
-             match="\{\/KELGROUP\}"
+             match="^\{\/KELGROUP\}"
              script="OnGroupEnd" />
     <trigger name="TR_GROUP_CAPTURE"
              group="GROUP_SCAN" enabled="n" regexp="y" ignore_case="y"
@@ -348,12 +342,12 @@ end
     <trigger name="TR_TANK_BEGIN"
              enabled="y" regexp="y" keep_evaluating="y" omit_from_output="y"
              sequence="90"
-             match="\{KELTANK\}"
+             match="^\{KELTANK\}"
              script="OnTankBegin" />
     <trigger name="TR_TANK_END"
              enabled="y" regexp="y" keep_evaluating="y" omit_from_output="y"
              sequence="91"
-             match="\{\/KELTANK\}"
+             match="^\{\/KELTANK\}"
              script="OnTankEnd" />
     <trigger name="TR_TANK_CAPTURE"
              group="TANK_SCAN" enabled="n" regexp="y" ignore_case="y"

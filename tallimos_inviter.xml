@@ -7,15 +7,15 @@
 
 <muclient>
 <plugin
-   name="Tallimos_AutoInviter"
-   author="Tallimos"
+   name="Utility_AutoInviter"
+   author="Tallimos/Kelaire"
    id="2dae6923b0384dba4ddff81f"
    language="Lua"
    purpose="Group auto inviter with Blacklist and Power User options"
    save_state="y"
    date_written="2020-12-04 09:12:45"
    requires="4.37"
-   version="1.62"
+   version="1.66"
    >
 
 </plugin>
@@ -109,7 +109,7 @@
 	</trigger>
 	<trigger
 		group="AutoInviter"
-		match="^(\w+) tells you \'(.*?)\'$"
+		match="^(?:\w+\s+)?(\w+)\s+tells you\s+'(.*?)'$"
 		name="Tells"
 		script="Invite"
 		sequence="100"

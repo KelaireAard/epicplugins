@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE muclient>
+ 
+<muclient>
+<plugin
+   name="Genie_AuraCounter"
+   author="Kelaire"
+   id="f47cdbcf42806f96b5e962bd"
+   language="Lua"
+   purpose="Counts Auras in Genie room."
+   save_state="y"
+   date_written="2025-10-23"
+   requires="4.00"
+   version="1.03"
+   >
+ 
+</plugin>
+ 
+ 
+<!--  Get our standard constants -->
+ 
+<include name="constants.lua"/>
+ 
+<!--  Triggers  -->
+ 
+<triggers>
+  <trigger
+   group="aura_counter"
+   match="^(.*?)Yellow Aura of the General (is fighting (.*?)\.|trying to KILL YOU\!)$"
+   regexp="y"
+   script="yellow_counter"
+   sequence="100"
+   enabled="n"
+  >
+  </trigger>
+   <trigger
+   group="aura_counter"
+   match="^(.*?)Blue Aura of the General (is fighting (.*?)\.|trying to KILL YOU\!)$"
+   regexp="y"
+   script="blue_counter"
+   sequence="100"
+   enabled="n"
+  >
+  </trigger>
+   <trigger
+   group="aura_counter"
+   match="^(.*?)Red Aura of the General (is fighting (.*?)\.|trying to KILL YOU\!)$"
+   regexp="y"
+   script="red_counter"
+   sequence="100"
+   enabled="n"
+  >
+  </trigger>
+  <trigger
+   enabled="y"
+   match="{/AuraCounter}"
+   regexp="n"
+   script="endCapture"
+   omit_from_output="y"
+   sequence="100"
+  >
+  </trigger>
+  <trigger
+   enabled="y"
+   match="Blizzard of sand gives Golden Sand to (.*)\."
+   regexp="y"
+   sequence="100"
+   send_to="12"
+  >
+  <send>
+     Send("gtell Sand given to %1")
+  </send>
+  </trigger>
+  
+</triggers>
+ 
+<!--  Aliases  -->
+ 
+<aliases>
+  <alias
+   match="auras"
+   enabled="y"
+   group="aura_counter"
+   script="startCapture"
+   sequence="100"
+  >
+  </alias>
+</aliases>
+<script>
+<![CDATA[
+
+function yellow_counter()
+  yellow = tonumber(GetVariable("YELLOW_AURA")) + 1
+  SetVariable("YELLOW_AURA", yellow)
+end
+
+function blue_counter()
+  blue = tonumber(GetVariable("BLUE_AURA")) + 1
+  SetVariable("BLUE_AURA", blue)
+end
+
+function red_counter()
+  red = tonumber(GetVariable("RED_AURA")) + 1
+  SetVariable("RED_AURA", red)
+end
+
+function endCapture()
+  red = tonumber(GetVariable("RED_AURA"))
+  blue = tonumber(GetVariable("BLUE_AURA"))
+  yellow = tonumber(GetVariable("YELLOW_AURA"))
+ 
+  if red > 0 or yellow > 0 or blue > 0 then
+    Send("gtell @W[@RRed@W: "..red.."@W]  [@YYellow@W: @W"..yellow.."@W]  [@BBlue@W: "..blue.."@W]  @x208<< @WTotal of "..red+yellow+blue.." @x208>>@w") 
+  else
+    Send("gtell @RNo Auras found.@w")
+  end
+ 
+  EnableTriggerGroup("aura_counter", false)
+  ColourNote("white", "steelblue", "aura_counter is off")
+end
+
+function startCapture()
+  SetVariable("BLUE_AURA", 0)
+  SetVariable("YELLOW_AURA", 0)
+  SetVariable("RED_AURA", 0)
+  EnableTriggerGroup("aura_counter", true)
+  SendNoEcho("echo {AuraCounter}")
+  SendNoEcho("glance")
+  SendNoEcho("echo {/AuraCounter}")
+end
+
+
+]]>
+</script>
+ 
+
+</muclient>

@@ -2,7 +2,7 @@
 <!DOCTYPE muclient>
 <muclient>
 <plugin
-   name="Epic_Plugin_Manager"
+   name="Self_PluginManager"
    author="Kelaire"
    id="386f7bc25fb805370ada4e76"
    language="Lua"
@@ -10,7 +10,7 @@
    save_state="y"
    date_written="2025-10-10 09:00:00"
    requires="4.00"
-   version="1.2"
+   version="1.58"
    >
 </plugin>
 <!-- Alias
@@ -132,6 +132,13 @@ function getName(Data, pretty)
   end
   return name
 end
+  
+function center_text(str, width)
+  local pad = (width - #str) / 2
+  if pad < 0 then pad = 0 end
+  return string.rep(" ", math.floor(pad)) .. str .. string.rep(" ", math.ceil(pad))
+end
+
 
 
 function pmMain(n,l,wc)
@@ -175,57 +182,136 @@ function pmMain(n,l,wc)
 end
 
 function EPMCheck()
-     local script_short
+  local function ci_get(tbl, key)  -- case-insensitive field getter
+    local lk = key:lower()
+    for k, v in pairs(tbl or {}) do
+      if type(k) == "string" and k:lower() == lk then return v end
+    end
+  end
+ 
+  if EPMVar["Initialized"] == "yes" then
+    local groups = {}
 
-     if EPMVar["Initialized"]=="yes" then
+    for num, data in ipairs(EPMVar["cache"]) do
+	  if EPMVar["Debug"] == "yes" then
+        local cat_dbg = data.Category or data.category or "(nil)"
+        ColourNote("Orange","", "EPM: cache["..num.."].Category = "..tostring(cat_dbg))
+      end
+      -- display label
+      local short = ci_get(data, "ShortName") or ci_get(data, "WName") or data.ShortName or data.WName or ""
 
-               ColourNote("Red","","+--------------------------[List of maintained plugins]--------------------------+")
-               for num,data in ipairs(EPMVar["cache"]) do 
-                    script_short = string.upper(string.gsub(data["ShortName"],"_"," "))
-                    ColourTell("Cyan", "", string.format("[%2d] ",num))
-					Hyperlink("epm help "..num, string.format("%-20s",script_short), "Plugin Information", "SkyBlue", "black", 0, 1)
+      -- *** READ CATEGORY DIRECTLY (case-insensitive), else Default
+      local cat = ci_get(data, "Category") or data.Category or data.category or ""
+      cat = tostring(cat):gsub("^%s+",""):gsub("%s+$","")
+      if cat == "" then cat = "Default" end
 
-                    if IsPluginInstalled(EPMVar["cache"][num]["PluginId"]) then
-                         if tonumber(EPMVar["cache"][num]["GHVersion"]) == nil then
-                              ColourNote("Red","","EPM: Something Went Wrong Github Version number not cached, please run command again")
-                              if EPMVar["Debug"] == "yes" then
-                                   ColourNote("Red","","EPM: If in Debug, you will see a table, copy and paste to Kelaire via personal note or mb.aardwolfboot.com: with this message GHVersion == nil "..num)
-                                   tprint(EPMVar["cache"])
-                              end
-                              return
-                         elseif tonumber(EPMVar["cache"][num]["LocalVersion"]) == nil then
-                              ColourNote("Red","","EPM: Something Went Wrong Local Version number not cached, please run command again")
-                              if EPMVar["Debug"] == "yes" then
-                                   ColourNote("Red","","EPM: If in Debug, you will see a table, copy and paste to Kelaire via personal note or mb.aardwolfboot.com: with this message local == nil "..num)
-                                   tprint(EPMVar["cache"])
-                              end
-                              return
-                         end
+      -- (optional) debug of what we actually *read* here
+      if EPMVar["Debug"] == "yes" then
+        ColourNote("Yellow","", "EPM: list-read category for #"..num.." = ["..cat.."]")
+      end
 
-                         if tonumber(EPMVar["cache"][num]["LocalVersion"]) < tonumber(EPMVar["cache"][num]["GHVersion"]) then
-                              Hyperlink("epm update "..num, "[Update Plugin]", "Download and Update Plugin", "DarkOrange", "black", 0, 1)
-                         else
-                              Hyperlink("epm reload "..num, "[Reload Plugin]", "Reload plugin", "Teal", "black", 0, 1)
-                         end
-                         Hyperlink("epm remove "..num, "[Remove Plugin]", "Remove plugin", "Red", "black", 0, 1)
-               
-                         if tonumber(EPMVar["cache"][num]["LocalVersion"]) >= tonumber(EPMVar["cache"][num]["GHVersion"]) then
-                              ColourNote("Green","","  **PLUGIN UP TO DATE**")
-                         else --keep this else in, to force a pagebreak between 2 plugins that need to be updated or else they will be on same line
-                              ColourNote("Red",""," ")
-                         end
-                    else
-                         Hyperlink("epm install "..num, "[Install Plugin]", "Install Plugin", "DarkOrange", "black", 0, 1)
-                         print("")
-                    end
+      local entry = {
+        num = num,
+        data = data,
+        script_short = string.upper((short:gsub("_", " "))),
+      }
+      groups[cat] = groups[cat] or {}
+      table.insert(groups[cat], entry)
+    end
 
-               end
-               ColourNote("Red","","+--------------------------------------------------------------------------------+")
-     else
-          makeRawUrl()
-          buildCache()
-     end
+    -- sort categories then print (unchanged) ...
+	local order = { Self = 1, OC=2, Winds=3, IceFall=4, Inferno=5, Genie=6, Trans=7, Titan=8, Terra=9, SKD=10, Utility=98, Default=99 }
+	
+	local catnames = {}
+	for cat,_ in pairs(groups) do table.insert(catnames, cat) end
+    table.sort(catnames, function(a,b)
+      local ra = order[a] or 50
+      local rb = order[b] or 50
+      if ra ~= rb then return ra < rb end
+      return a:lower() < b:lower()
+    end)
+    
+    --table.sort(catnames, function(a,b) return a:lower() < b:lower() end)
+
+    ColourNote("White", "slateblue",
+	"        [List of maintained plugins]        ")
+	--                                                      123456789012345678901234567890123456789012
+	ColourNote("White", "slateblue", " ", "cyan", "", "To see information about a plugin, click  ","White", "slateblue", " ")
+	ColourNote("White", "slateblue", " ", "cyan", "", " on the plugin name.                      ","White", "slateblue", " ")
+
+    local firstRun = 0
+
+
+    for _, cat in ipairs(catnames) do
+      table.sort(groups[cat], function(a,b)
+        return a.script_short:lower() < b.script_short:lower()
+      end)
+	
+
+      ColourNote("White", "slateblue","  ","White", "slateblue", center_text(string.format("==[ %s ]==", cat), 40),"White", "slateblue","  ")
+
+
+      for _, e in ipairs(groups[cat]) do
+        local num  = e.num
+        local script_short = e.script_short
+		
+
+        if IsPluginInstalled(EPMVar["cache"][num]["PluginId"]) then
+          local gh  = tonumber(EPMVar["cache"][num]["GHVersion"])
+          local loc = tonumber(EPMVar["cache"][num]["LocalVersion"])
+		  
+		  if loc >= gh then
+            ColourTell("White", "slateblue"," ","Cyan", "", " [", "Green", "", "x", "Cyan", "", "] ")
+          else
+            ColourTell("White", "slateblue"," ","Cyan", "", " [", "Yellow", "", "x", "Cyan", "", "] ")
+          end
+
+          
+          Hyperlink("epm help "..num, string.format("%-20s", script_short),
+	             	"Plugin Information", "SkyBlue", "black", 0, 1)
+		
+
+          if not gh or not loc then
+            ColourNote("Red","","EPM: Version number not cached, please run command again")
+            if EPMVar["Debug"] == "yes" then tprint(EPMVar["cache"]) end
+            return
+          end
+          if loc < gh then
+            Hyperlink("epm update "..num, "[Update]", "Download and Update Plugin", "DarkOrange", "black", 0, 1)
+          else
+            Hyperlink("epm reload "..num, "[Reload]", "Reload plugin", "Teal", "black", 0, 1)
+          end
+          Hyperlink("epm remove "..num, "[Remove]", "Remove plugin", "Red", "black", 0, 1)
+		  ColourTell("White",""," ")
+
+          ColourTell("White", "slateblue"," ")
+		  print("")
+        else
+		  ColourTell("White", "slateblue"," ","Cyan", "", " [ ] ")
+		  Hyperlink("epm help "..num, string.format("%-20s", script_short),
+	             	"Plugin Information", "SkyBlue", "black", 0, 1)
+
+          Hyperlink("epm install "..num, "[Install]", "Install Plugin", "DarkOrange", "black", 0, 1)
+		  ColourTell("White","","        ")
+
+          ColourTell("White", "slateblue"," ")
+		  print("")
+        end
+	  end
+
+    end
+
+    ColourNote("White", "slateblue",
+      "                                            ")
+  else
+    makeRawUrl()
+    buildCache()
+  end
 end
+
+
+
+
 
 function EPMUpdate(PID)
      local num, args = PID:match("(%d+)%s*(.*)")
@@ -446,7 +532,7 @@ function buildCache()
 end --end function buildCache()
 
 function raw_get_cache(retval, page, status, headers, full_status, request_url)
-     local WName,rawname,ghVersion,pid,lVersion,lname,_,description
+     local WName,rawname,ghVersion,pid,lVersion,lname,_,description,category
 
 
      cache_res = cache_res + 1
@@ -473,8 +559,20 @@ function raw_get_cache(retval, page, status, headers, full_status, request_url)
 	  end
 
 	  -- rawname: from page, else fall back to WName
-	  rawname = page:match('%s+[Nn][Aa][Mm][Ee]="([%w_]+)"') or WName
-	  if EPMVar["Debug"] == "yes" then
+	  --rawname = page:match('%s+[Nn][Aa][Mm][Ee]="([%w_]+)"') or WName
+	  --if EPMVar["Debug"] == "yes" then
+	  --  ColourNote("Red","","EPM: set rawname:"..tostring(rawname))
+	  --end
+	  
+      -- grab Name="..." (case-insensitive), fallback to WName
+	  local nameval = page:match('%s+[Nn][Aa][Mm][Ee]%s*=%s*"%s*([^"]-)%s*"') or WName
+
+	  -- split at the first underscore
+	  local cat, rn = nameval:match('^([^_]+)_(.+)$')
+	  category, rawname = cat and cat or "Default", rn and rn or nameval
+
+	  if EPMVar["Debug"] == "yes" then 
+	    ColourNote("Red","","EPM: set category:"..tostring(category))
 	    ColourNote("Red","","EPM: set rawname:"..tostring(rawname))
 	  end
 
@@ -535,6 +633,7 @@ function raw_get_cache(retval, page, status, headers, full_status, request_url)
           EPMVar["cache"][cache_res]["GHVersion"] = ghVersion
           EPMVar["cache"][cache_res]["PluginId"] = pid
 		  EPMVar["cache"][cache_res]["Description"] = description
+		  EPMVar["cache"][cache_res]["Category"] = category
           EPMVar["cache"][cache_res]["LocalVersion"] = lVersion
           EPMVar["cache"][cache_res]["LongName"] = lname
           EPMVar["cache"][cache_res]["url"] = request_url
@@ -553,6 +652,7 @@ function raw_get_cache(retval, page, status, headers, full_status, request_url)
           EPMVar["cache"][cache_res]["GHVersion"] = ghVersion
           EPMVar["cache"][cache_res]["PluginId"] = pid
 		  EPMVar["cache"][cache_res]["Description"] = description
+		  EPMVar["cache"][cache_res]["Category"] = category
           EPMVar["cache"][cache_res]["LocalVersion"] = lVersion
           EPMVar["cache"][cache_res]["LongName"] = lname
           EPMVar["cache"][cache_res]["url"] = request_url
@@ -622,6 +722,9 @@ function ShowHelp(PID)
     ColourNote("Red","","EPM: | epm reload <number>     - reloads plugin with number from epm check  |")
     ColourNote("Red","","EPM: | epm install <number>    - installs plugin with number from epm check |")
     ColourNote("Red","","EPM: | epm remove <number>     - removes plugin with number from epm check  |")
+	ColourNote("Red","","EPM: |                                                                      |")
+	ColourNote("Red","","EPM: | For additional assistance, please join the Discord!                  |")
+	ColourNote("Red","","EPM: | https://discord.gg/vQz5cqwqxv                                        |")
     ColourNote("Red","","EPM: +----------------------------------------------------------------------+")
     return
   end
@@ -638,6 +741,7 @@ function ShowHelp(PID)
 end
 ]]>
 </script> 
+
 
 
 </muclient>

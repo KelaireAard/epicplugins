@@ -6,7 +6,7 @@
 
 <muclient>
 <plugin
-   name="Epic_AimDetector"
+   name="Utility_AimDetector"
    author="Kelaire"
    id="7d38d7c7061fb2b7cbbcea24"
    language="Lua"
@@ -253,6 +253,7 @@ end
 
 
 </muclient>
+
 
 
 

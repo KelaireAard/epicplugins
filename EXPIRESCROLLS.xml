@@ -2,7 +2,7 @@
 <!DOCTYPE muclient>
 <muclient>
 <plugin
-   name="Epic_ScrollSorter"
+   name="Utility_ScrollSorter"
    author="Mendaloth/Kelaire"
    id="20324f91b0722c698a10f0a6"
    language="Lua"
@@ -154,4 +154,5 @@ end
 ]]>
 </script>
 </muclient>
+
 

@@ -7,7 +7,7 @@
 
 <muclient>
 <plugin
-   name="Epic_OCLeader"
+   name="OC_OCLeader"
    author="Kelaire"
    id="1ad8cdbb378258e1f343c9d7"
    purpose="Triggers and Aliases to aid in the running of the OC Epic"
@@ -766,3 +766,4 @@ end
 
 
 </muclient>
+

@@ -1,0 +1,20 @@
+--------------------------------------------------------------------------------
+                            BAD - Boss Aim Detector
+--------------------------------------------------------------------------------
+This plugin will show who is attacking a boss they should not be
+
+bad check - Checks who is attacking your mob
+bad set mobname - Sets to a pre-defined mob
+bad list - Lists pre-defined mobs
+bad custom mobstring - Sets to a specific mob not on the list
+bad help - shows this help file
+
+Default Mob List:
+
+Mob Key: sand       Mob Full Name: blizzard of sand
+Mob Key: genie      Mob Full Name: Dark Genie General
+Mob Key: shade      Mob Full Name: Shade
+Mob Key: death      Mob Full Name: Death
+Mob Key: talon      Mob Full Name: Talon, The Glorious One
+
+--------------------------------------------------------------------------------
