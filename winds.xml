@@ -18,7 +18,7 @@ commentz
    purpose="Winds epic stuff."
    date_written="2018-01-24 20:02:50"
    requires="4.30"
-   version="1.3"
+   version="1.4"
    save_state="y"
    >
 <description trim="n">
@@ -259,9 +259,51 @@ commentz
    group="triggers"
   >
   </trigger>
-  <trigger
+<!-- I don't think this is a good trigger message for this event, added another below. 
+   <trigger
    enabled="y"
    match="^You look and see Lord Orittias, the Betrayer scowling at you!$"
+   regexp="y"
+   script="OritDamage"
+   sequence="101"
+   omit_from_output="n"
+   group="triggers"
+  >
+  </trigger> -->
+   <trigger
+   enabled="y"
+   match="^Lord Orittias, the Betrayer exclaims 'I summon a flurry of daggers to pierce your hearts!'$"
+   regexp="y"
+   script="OritDamage"
+   sequence="101"
+   omit_from_output="n"
+   group="triggers"
+  >
+  </trigger>
+ <!--
+   <trigger
+   enabled="y"
+   match="^You suddenly see Lord Orittias, the Betrayer lunging at you with a dagger, but dodge his killing blow!$"
+   regexp="y"
+   script="OritDamage"
+   sequence="101"
+   omit_from_output="n"
+   group="triggers"
+  >
+  </trigger> -->
+  <trigger
+   enabled="y"
+   match="^Lord Orittias, the Betrayer exclaims 'You are worse than El'Cair! Feast upon my daggers!'$"
+   regexp="y"
+   script="OritDamage"
+   sequence="101"
+   omit_from_output="n"
+   group="triggers"
+  >
+  </trigger>
+  <trigger
+   enabled="y"
+   match="^Lord Orittias, the Betrayer exclaims 'Fear me and my magic missiles!'$"
    regexp="y"
    script="OritDamage"
    sequence="101"
@@ -273,7 +315,7 @@ commentz
    enabled="y"
    match="^Lord Orittias, the Betrayer exclaims 'Enough! I shall overpower you with the knowledge of the ages!'$"
    regexp="y"
-   script="OritDamage"
+   script="MobSpawnsThrow"
    sequence="101"
    omit_from_output="n"
    group="triggers"
@@ -281,9 +323,11 @@ commentz
   </trigger>
   <trigger
    enabled="y"
-   match="^You suddenly see Lord Orittias, the Betrayer lunging at you with a dagger, but dodge his killing blow!$"
+   match="^Lord Orittias, the Betrayer throws a book at (?<Player>\w+)!\nLord Orittias, the Betrayer throws a book at (?<Player2>\w+)!$"
    regexp="y"
-   script="OritDamage"
+   lines_to_match="2"
+   multi_line="y"
+   script="MobSpawns"
    sequence="101"
    omit_from_output="n"
    group="triggers"
@@ -301,9 +345,9 @@ commentz
   </trigger>
   <trigger
    enabled="y"
-   match="^Lord Orittias, the Betrayer exclaims 'I grow tired of you thinking you can win!'$"
+   match="^Lord Orittias, the Betrayer exclaims 'I warn you all\. This will not be good for you!'$"
    regexp="y"
-   script="MobSpawns"
+   script="MobSpawnsThrow"
    sequence="101"
    omit_from_output="n"
    group="triggers"
@@ -311,7 +355,27 @@ commentz
   </trigger>
   <trigger
    enabled="y"
-   match="^Lord Orittias, the Betrayer says 'You have defeated me (?<Player>\w+). I did not think that was possible. You truly are a defender of Aardwolf.'$"
+   match="^Lord Orittias, the Betrayer exclaims 'I grow tired of you thinking you can win!'$"
+   regexp="y"
+   script="MobSpawnsThrow"
+   sequence="101"
+   omit_from_output="n"
+   group="triggers"
+  >
+  </trigger>
+   <trigger
+   enabled="y"
+   match="^Lord Orittias, the Betrayer exclaims 'Unleash an endless wave of wrath upon these heathens!!'$"
+   regexp="y"
+   script="MobSpawnsThrow"
+   sequence="101"
+   omit_from_output="n"
+   group="triggers"
+  >
+  </trigger>
+  <trigger
+   enabled="y"
+   match="^Lord Orittias, the Betrayer says 'You have defeated me (?<Player>\w+)\. I did not think that was possible. You truly are a defender of Aardwolf.'$"
    regexp="y"
    script="DeadOrit"
    sequence="101"
@@ -984,7 +1048,14 @@ function MobSpawns(name, line, args)
     SendNoEcho("gtell Orittias spawned adds, please KILL THEM!")
   end
 end
-  
+
+function MobSpawnsThrow(name, line, args)
+  groupLeader = get_info_leader()	
+  -- Make sure you are leader
+  if groupLeader == gmcp("char.base.name") then
+    SendNoEcho("gtell Orittias spawned adds, walk around the square and KILL THEM!")
+  end
+end
 
 function DeadOrit(name, line, args)
   groupLeader = get_info_leader()	
@@ -1153,4 +1224,3 @@ end
 </script>
 
 </muclient>
-
