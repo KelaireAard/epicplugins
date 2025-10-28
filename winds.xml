@@ -18,7 +18,7 @@ commentz
    purpose="Winds epic stuff."
    date_written="2018-01-24 20:02:50"
    requires="4.30"
-   version="1.4"
+   version="1.45"
    save_state="y"
    >
 <description trim="n">
@@ -323,10 +323,8 @@ commentz
   </trigger>
   <trigger
    enabled="y"
-   match="^Lord Orittias, the Betrayer throws a book at (?<Player>\w+)!\nLord Orittias, the Betrayer throws a book at (?<Player2>\w+)!$"
+   match="^Lord Orittias, the Betrayer throws a book at (?<Player>\w+)!$"
    regexp="y"
-   lines_to_match="2"
-   multi_line="y"
    script="MobSpawns"
    sequence="101"
    omit_from_output="n"
@@ -476,6 +474,7 @@ end
 me = nil
 chan = "gtell :"
 dupes_chan = ""
+leader_voice = "gtt"
 room_info = 1
 char_status = 1
 group = 1
@@ -1038,14 +1037,19 @@ function OritDamage(name, line, args)
   local groupLeader = get_info_leader()	
   -- Make sure you are leader
   if groupLeader == gmcp("char.base.name") then
-    SendNoEcho("gtell Orritias did massive damage to the group, please PHEAL!")
+    --Execute(leader_voice .. " Orritias did massive damage to the group, please PHEAL!")
+	--leaving executes in case we want to allow individualized "leader voices" at some point.
+	SendNoEcho(chan.."@Y>> @x075Winds of Fate @Y>> Orritias did massive damage to the group, please PHEAL!")
   end
 end
 function MobSpawns(name, line, args)
   groupLeader = get_info_leader()	
   -- Make sure you are leader
   if groupLeader == gmcp("char.base.name") then
-    SendNoEcho("gtell Orittias spawned adds, please KILL THEM!")
+    --Execute(leader_voice .. " Orittias spawned adds, please KILL THEM!")
+	SendNoEcho(chan.."@Y>> @x075Winds of Fate @Y>> Orittias spawned adds, please KILL THEM!")
+	EnableTriggerGroup("triggers",false)
+	DoAfterSpecial(5,"EnableTriggerGroup('triggers',true)",12)
   end
 end
 
@@ -1053,7 +1057,8 @@ function MobSpawnsThrow(name, line, args)
   groupLeader = get_info_leader()	
   -- Make sure you are leader
   if groupLeader == gmcp("char.base.name") then
-    SendNoEcho("gtell Orittias spawned adds, walk around the square and KILL THEM!")
+    --Execute(leader_voice .. " Orittias spawned adds, walk around the square and KILL THEM!")
+	SendNoEcho(chan.."@Y>> @x075Winds of Fate @Y>> Orittias spawned adds, walk around the square and KILL THEM!")
   end
 end
 
@@ -1061,7 +1066,8 @@ function DeadOrit(name, line, args)
   groupLeader = get_info_leader()	
   -- Make sure you are leader
   if groupLeader == gmcp("char.base.name") then
-    SendNoEcho("gtell Orittias is dead! Return to area!")
+    --Execute(leader_voice .. " Orittias is dead! Return to area!")
+	SendNoEcho(chan.."@Y>> @x075Winds of Fate @Y>>  Orittias is dead! Return to area!")
   end
 end
   
