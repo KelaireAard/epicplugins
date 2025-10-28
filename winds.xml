@@ -11,14 +11,14 @@ commentz
 
 <muclient>
 <plugin
-   name="Winds_WindsHelper"
-   author="Endymion"
+   name="Epic_WindsHelper"
+   author="Endymion\Kelaire"
    id="4b128e4e3d76f0a2bda4b0ed"
    language="Lua"
-   purpose="Winds epic helper - command for words, item counter for accept, other utilities."
+   purpose="Winds epic stuff."
    date_written="2018-01-24 20:02:50"
    requires="4.30"
-   version="1.2"
+   version="1.3"
    save_state="y"
    >
 <description trim="n">
@@ -259,6 +259,69 @@ commentz
    group="triggers"
   >
   </trigger>
+  <trigger
+   enabled="y"
+   match="^You look and see Lord Orittias, the Betrayer scowling at you!$"
+   regexp="y"
+   script="OritDamage"
+   sequence="101"
+   omit_from_output="n"
+   group="triggers"
+  >
+  </trigger>
+  <trigger
+   enabled="y"
+   match="^Lord Orittias, the Betrayer exclaims 'Enough! I shall overpower you with the knowledge of the ages!'$"
+   regexp="y"
+   script="OritDamage"
+   sequence="101"
+   omit_from_output="n"
+   group="triggers"
+  >
+  </trigger>
+  <trigger
+   enabled="y"
+   match="^You suddenly see Lord Orittias, the Betrayer lunging at you with a dagger, but dodge his killing blow!$"
+   regexp="y"
+   script="OritDamage"
+   sequence="101"
+   omit_from_output="n"
+   group="triggers"
+  >
+  </trigger>
+  <trigger
+   enabled="y"
+   match="^Lord Orittias, the Betrayer summons his children to defend him!$"
+   regexp="y"
+   script="MobSpawns"
+   sequence="101"
+   omit_from_output="n"
+   group="triggers"
+  >
+  </trigger>
+  <trigger
+   enabled="y"
+   match="^Lord Orittias, the Betrayer exclaims 'I grow tired of you thinking you can win!'$"
+   regexp="y"
+   script="MobSpawns"
+   sequence="101"
+   omit_from_output="n"
+   group="triggers"
+  >
+  </trigger>
+  <trigger
+   enabled="y"
+   match="^Lord Orittias, the Betrayer says 'You have defeated me (?<Player>\w+). I did not think that was possible. You truly are a defender of Aardwolf.'$"
+   regexp="y"
+   script="DeadOrit"
+   sequence="101"
+   omit_from_output="n"
+   group="triggers"
+  >
+  </trigger>
+
+
+
 
 
 
@@ -905,6 +968,37 @@ function go_try()
 	msg = msg.."  @x075]]"
 	SendNoEcho(msg)
 end
+	
+
+function OritDamage(name, line, args)
+  local groupLeader = get_info_leader()	
+  -- Make sure you are leader
+  if groupLeader == gmcp("char.base.name") then
+    SendNoEcho("gtell Orritias did massive damage to the group, please PHEAL!")
+  end
+end
+function MobSpawns(name, line, args)
+  groupLeader = get_info_leader()	
+  -- Make sure you are leader
+  if groupLeader == gmcp("char.base.name") then
+    SendNoEcho("gtell Orittias spawned adds, please KILL THEM!")
+  end
+end
+  
+
+function DeadOrit(name, line, args)
+  groupLeader = get_info_leader()	
+  -- Make sure you are leader
+  if groupLeader == gmcp("char.base.name") then
+    SendNoEcho("gtell Orittias is dead! Return to area!")
+  end
+end
+  
+
+function get_info_leader()        
+	any, p = CallPlugin("3e7dedbe37e44942dd46d264", "gmcpval", "group.leader")        
+	return p 
+end
 
 function OnPluginSaveState()
 	SetVariable("start", start)
@@ -1059,6 +1153,4 @@ end
 </script>
 
 </muclient>
-
-
 
