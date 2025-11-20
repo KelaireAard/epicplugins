@@ -11,7 +11,7 @@
    save_state="y"
    date_written="2025-10-23"
    requires="4.00"
-   version="1.03"
+   version="1.10"
    >
  
 </plugin>
@@ -62,14 +62,11 @@
   </trigger>
   <trigger
    enabled="y"
-   match="Blizzard of sand gives Golden Sand to (.*)\."
+   match="Blizzard of sand gives Golden Sand to (?<sandPlayer>.*)\."
    regexp="y"
    sequence="100"
-   send_to="12"
+   script="sandGiven"
   >
-  <send>
-     Send("gtell Sand given to %1")
-  </send>
   </trigger>
   
 </triggers>
@@ -88,6 +85,8 @@
 </aliases>
 <script>
 <![CDATA[
+
+require("gmcphelper")
 
 function yellow_counter()
   yellow = tonumber(GetVariable("YELLOW_AURA")) + 1
@@ -129,9 +128,21 @@ function startCapture()
   SendNoEcho("echo {/AuraCounter}")
 end
 
+function sandGiven(name, line, args)
+  if groupLeader == gmcp("char.base.name") then
+    Send("gtell Sand given to " .. sandPlayer)
+  else
+    ColourNote("Red","","GenieInfo: Sand given to " .. sandPlayer)
+  end
+end
+
+function get_info_leader()        
+  any, p = CallPlugin("3e7dedbe37e44942dd46d264", "gmcpval", "group.leader")        
+  return p 
+end
+
 
 ]]>
 </script>
  
-
 </muclient>
