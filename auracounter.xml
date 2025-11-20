@@ -11,7 +11,7 @@
    save_state="y"
    date_written="2025-10-23"
    requires="4.00"
-   version="1.10"
+   version="1.11"
    >
  
 </plugin>
@@ -128,7 +128,7 @@ function startCapture()
   SendNoEcho("echo {/AuraCounter}")
 end
 
-function sandGiven(name, line, args)
+function sandGiven(name, line, args)  sandPlayer = args.sandPlayer
   if groupLeader == gmcp("char.base.name") then
     Send("gtell Sand given to " .. sandPlayer)
   else
