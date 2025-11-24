@@ -7,15 +7,15 @@
 
 <muclient>
 <plugin
-   name="Tallimos_Epic_Broadcaster"
-   author="Tallimos"
+   name="Utility_EpicBroadcaster"
+   author="Tallimos/Kelaire"
    id="ee9c79343749c58f7d1e99bc"
    language="Lua"
    purpose="Easy to use broadcaster for epic runs"
    save_state="y"
    date_written="2020-12-11 21:36:19"
    requires="4.36"
-   version="1.81"
+   version="1.82"
    >
 
 </plugin>
@@ -1262,4 +1262,5 @@ function dbot.reload()
 end -- dbot.reload
 ]]>
 </script> 
+
 </muclient>
