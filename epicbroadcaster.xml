@@ -7,7 +7,7 @@
 
 <muclient>
 <plugin
-   name="Utility_TEBBroadcaster"
+   name="Tallimos_Epic_Broadcaster"
    author="Tallimos"
    id="ee9c79343749c58f7d1e99bc"
    language="Lua"
@@ -91,7 +91,7 @@ local noteline = "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 --------------- MENU FUNCTION ---------------
 ---------------------------------------------
 function CommandMenu(name, line, wc)
-	commandline = trim(string.lower(wc[1]))
+	commandline = trim(wc[1])
 	wordtable = utils.split (commandline, " ")
 
 	cmd = wordtable[1]
@@ -1262,6 +1262,4 @@ function dbot.reload()
 end -- dbot.reload
 ]]>
 </script> 
-
 </muclient>
-
