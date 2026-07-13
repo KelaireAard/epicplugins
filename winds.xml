@@ -355,7 +355,7 @@ commentz
    enabled="y"
    match="^Lord Orittias, the Betrayer exclaims 'I grow tired of you thinking you can win!'$"
    regexp="y"
-   script="MobSpawnsThrow"
+   script="MobSpawns"
    sequence="101"
    omit_from_output="n"
    group="triggers"
@@ -363,7 +363,7 @@ commentz
   </trigger>
    <trigger
    enabled="y"
-   match="^Lord Orittias, the Betrayer exclaims 'Unleash an endless wave of wrath upon these heathens!!'$"
+   match="^Lord Orittias, the Betrayer stumbles to the ground, visibly bruised and beaten.'$"
    regexp="y"
    script="MobSpawnsThrow"
    sequence="101"
@@ -485,7 +485,7 @@ offer_bag = ""
 search_list = ""
 obelisk_room = "39999" --"39999"
 show_missing = tonumber(GetVariable("show_missing")) or 1
-dont_rename = false
+dont_rename = true
 start = tonumber(GetVariable("start")) or os.time()
 cooldown = tonumber(GetVariable("cooldown")) or "unknown"
 items = {}
