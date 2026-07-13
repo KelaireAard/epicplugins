@@ -7,7 +7,7 @@
 
 <muclient>
 <plugin
-   name="Transcendence_Controller"
+   name="Trans_Controller"
    author="Castiel"
    id="b5ae96f38a66fa9cd6ab0f60"
    language="Lua"
