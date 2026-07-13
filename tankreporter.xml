@@ -9,7 +9,7 @@
     purpose="Parse look output and report who is tanking mobs (including YOU), showing each tank's HP% from group"
     date_written="2025-10-21"
     requires="4.94"
-    version="1.96"
+    version="1.97"
     save_state="y">
   </plugin>
 
@@ -209,7 +209,7 @@ function OnTankEnd()
   local parts = {}
   for _, entry in ipairs(sorted_counts(tankCounts, groupHP)) do
     local n  = entry.name
-    local hp = groupHP[norm_name(n)]
+    local hp = groupHP[norm_name(n)] or 0
     local pct = hp and (tostring(hp.pct) .. "%") or "??%"
 	
 	if hp.pct >= 80 then pctcolor = "@G"
