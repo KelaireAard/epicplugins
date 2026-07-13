@@ -6,14 +6,14 @@
 
 <muclient>
 <plugin
-   name="Utility_WIMP"
+   name="WIMP"
    author="Kelaire"
    id="314f356e3b6cba4efbf7baf9"
    language="Lua"
    purpose="WIMP - Warrior Index and Metrics Parser"
    date_written="2024-01-20"
    requires="5.07"
-   version="1.72"
+   version="1.73"
    >
 
  <description trim="n">
@@ -132,7 +132,7 @@
   <trigger
 		enabled="n"
 		name="captureGroupInfo"
-		match="^(\s+)?(?<Level>\d+)\s+(?<Class>[W|H|M|P|C|R|T])\+?[2-7]?\s[\*|\s](?<Character>[A-Za-z]+)\s+(?<HP>\d+)\/(?<MHP>\d+)\s+(?<MP>\d+)\/(?<MMP>\d+)\s+(?<MV>\d+)\/(?<MMV>\d+)\s+(?<Align>-?\d+)\s+(?<TNL>\d+)\s+(?<QT>\d+)\s+(?<Here>Y)?$"
+		match="^(\s+)?(?<Level>\d+)\s+(?<Class>[W|H|M|P|C|R|T])\+?[2-7]?\s[\*|\s](?<Character>[A-Za-z]+)\s+(?<HP>\d+)\/(?<MHP>\d+)\s+(?<MP>\d+)\/(?<MMP>\d+)\s+(?<MV>\d+)\/(?<MMV>\d+)\s+(?<Align>-?\d+)\s+(?<TNL>\d+)\*?\s+(?<QT>\d+)\s+(?<Here>Y)?$"
 		regexp="y"
 		script="parse_group_line"
 		sequence="100"
@@ -257,9 +257,9 @@ end
 function strip_tags(s)
   s = s:gsub("%*AFK%*", "")
   s = s:gsub("%(OPK%)", "")
-  s = s:gsub("%(HARDCORE%)", "")
-  s = s:gsub("%(Linkdead%)", "")
+  s = s:gsub("%(HARDCORE%)", "")  s = s:gsub("%(Linkdead%)", "")
   s = s:gsub("%[Advisor%]", "")
+  s = s:gsub("%(TRAITOR%)", "")
   s = s:gsub("%[Helper%]", "")
   return trim(s)
 end
@@ -644,7 +644,6 @@ end
 
 
 </muclient>
-
 
 
 

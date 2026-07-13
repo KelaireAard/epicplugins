@@ -18,7 +18,7 @@ commentz
    purpose="Winds epic stuff."
    date_written="2018-01-24 20:02:50"
    requires="4.30"
-   version="1.45"
+   version="1.46"
    save_state="y"
    >
 <description trim="n">
@@ -464,6 +464,7 @@ function init_winds()
 	side = 1
 	player = ""
 	word = ""
+	attempt_words = {}
 	cmd = ""
 	side1 = {[1] = {word = "und"}, [2] = {word = "kaje"}, [3] = {word = "exo"}, [4] = {word = "wond"}, [5] = {word = "soberi"}, [6] = {word = "axo"}, [7] = {word = "wangi"}, [8] = {word = "soju"}}
 	side2 = {[1] = {word = "pavi"}, [2] = {word = "ilion"}, [3] = {word = "edi"}, [4] = {word = "itor"}, [5] = {word = "shooey"}, [6] = {word = "opti"}, [7] = {word = "haviar"}, [8] = {word = "rochu"}}
@@ -491,6 +492,7 @@ cooldown = tonumber(GetVariable("cooldown")) or "unknown"
 items = {}
 required = 0 -- items required - sets if you try and fail
 attempts = {} -- player pedestal attempts
+attempt_words = {} -- words spoken during the current pedestal attempt
 
 
 -- Collector Case
@@ -864,6 +866,7 @@ end
 
 function player_pedestal(name, line, args)
 	player = args.player
+	attempt_words = {}
 	player_attempt(player)
 	if cmd ~= "" then
 		ColourNote("#FBFF00", "", "\n >> ", "#9AC7FE", "", "Winds of Fate", "white", "", " cmd ", "silver", "", " cleared out because ", "white", "", player, "silver", "", " used it.\n")
@@ -874,7 +877,8 @@ function player_pedestal(name, line, args)
 end
 
 function player_says(name, line, args)
-	word = args.word
+	word = string.lower(args.word)
+	table.insert(attempt_words, word)
 end
 
 function rename_group()
@@ -895,6 +899,43 @@ function rename_group()
 	end
 	Send("group rename "..g)
 	dont_rename = true
+end
+
+-- Return the accepted word for a solved side, or nil if that side is not solved.
+function accepted_word_for_side(s)
+	local t = _G["side"..s]
+	if not t then
+		return nil
+	end
+	for _, v in ipairs(t) do
+		if v.result == 1 then
+			return string.lower(v.word)
+		end
+	end
+	return nil
+end
+
+-- A result from the obelisk only applies when the player said all previously
+-- solved side words in order immediately before the word being tested.
+function attempt_has_required_prefix(test_side)
+	if test_side <= 1 then
+		return true
+	end
+
+	if #attempt_words < test_side then
+		return false
+	end
+
+	local start_at = #attempt_words - test_side + 1
+	for s = 1, test_side - 1 do
+		local expected = accepted_word_for_side(s)
+		local actual = attempt_words[start_at + s - 1]
+		if not expected or not actual or string.lower(actual) ~= expected then
+			return false
+		end
+	end
+
+	return true
 end
 
 function say_result(name, line, args)
@@ -923,12 +964,25 @@ function say_result(name, line, args)
 				if not v.result then
 					show = true
 				end
-				if side == i or rslt == 1 then -- only scratch a word if we know the side matches
+				local valid_sequence = attempt_has_required_prefix(i)
+				if not valid_sequence then
+					if sitter then
+						Send(chan.."@Y>> @x075Winds of Fate @Y>> @wIgnoring the result for @W"..word.."@w because the earlier side words were skipped or spoken out of order.$C")
+						report(side)
+						go_try()
+					end
+					return
+				end
+
+				if side == i then -- only set a result when this is the side currently being tested
 					v.result = rslt
 				else
 					if sitter then
 						Send(chan.."@Y>> @x075Winds of Fate @Y>> @wNot setting result for @W"..word.."@w because it is not on @Wside@D[@x075"..side.."@D]@w.$C")
+						report(side)
+						go_try()
 					end
+					return
 				end
 				if rslt == 1 then
 					side = i+1
@@ -1224,6 +1278,8 @@ function OnHelp ()
 	ColourNote("yellow", "", "cmd                                            ", "#9AC7FE", "", "Use the alias after it is set.")
 	ColourNote("white", "", "                                                 * The alias will clear out if you are ")
 	ColourNote("white", "", "                                                   in the room when it is used.")
+	ColourNote("white", "", "The plugin ignores a failed guess when earlier solved side words were skipped")
+	ColourNote("white", "", "or spoken out of order during that pedestal attempt.")
 	Note("")
 end
 ]]>
