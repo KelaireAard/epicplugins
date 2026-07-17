@@ -15,7 +15,7 @@
    save_state="y"
    date_written="2021-08-21 22:45:37"
    requires="5.06"
-   version="1.02"
+   version="1.021"
    >
    <description trim="n">
    		<![CDATA[
@@ -36,7 +36,7 @@
 |   command is selected to the right of the grid. (It will be highlighted)   |
 | - To change a command, just click the circle or the text next to it to the |
 |   right of the grid.                                                       |
-| - The numbers on the grid are as follows: Red = Angels(Bad guys), Yellow = |
+| - The numbers on the grid are as follows: Yellow = Angels(Bad guys), Red = |
 |   Others(Very bad guys), Green = players, White = Siege Golems(Good guys). |
 | - Refresh will manually send map. The circle next to it will toggle the    |
 |   automapper(Will send map every 1 second until you click the button again |
@@ -108,8 +108,8 @@
 		selectedCommandHighlight = "palegreen",
 		selectedCommandText = "lime",
 		header = "#474747",
-		angels = "red",
-		others = "yellow",
+		angels = "yellow",
+		others = "red",
 		players = "lime",
 		titans = "white"
 	}
