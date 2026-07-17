@@ -15,7 +15,7 @@
    save_state="y"
    date_written="2021-08-21 22:45:37"
    requires="5.06"
-   version="1.01"
+   version="1.02"
    >
    <description trim="n">
    		<![CDATA[
@@ -757,7 +757,7 @@
 		end
 
 		if hotspot_id == "Refresh" then
-			Execute("map")
+			SendNoEcho("map")
 		elseif hotspot_id == "RefreshTimer" then
 			if GetTimerInfo("RefreshMap", 6) == true then
 				SetTimerOption("RefreshMap", "enabled", "n")

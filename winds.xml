@@ -11,14 +11,14 @@ commentz
 
 <muclient>
 <plugin
-   name="Winds_WindsHelper"
+   name="Epic_WindsHelper"
    author="Endymion\Kelaire"
    id="4b128e4e3d76f0a2bda4b0ed"
    language="Lua"
    purpose="Winds epic stuff."
    date_written="2018-01-24 20:02:50"
    requires="4.30"
-   version="1.46"
+   version="1.50"
    save_state="y"
    >
 <description trim="n">
@@ -456,7 +456,9 @@ require "commas"
 dofile(GetInfo(56)..GetInfo(60).."aardwolf_colors.lua")
 
 function init_winds()
-	if leader then
+	local groupLeader = get_info_leader()	
+    -- Make sure you are leader
+    if groupLeader == gmcp("char.base.name") then
 		if not dont_rename then
 			Send("group rename @Y[@x075Winds of Fate@Y]")
 		end
@@ -465,6 +467,8 @@ function init_winds()
 	player = ""
 	word = ""
 	attempt_words = {}
+	attempt_candidate = nil
+	attempt_invalid = false
 	cmd = ""
 	side1 = {[1] = {word = "und"}, [2] = {word = "kaje"}, [3] = {word = "exo"}, [4] = {word = "wond"}, [5] = {word = "soberi"}, [6] = {word = "axo"}, [7] = {word = "wangi"}, [8] = {word = "soju"}}
 	side2 = {[1] = {word = "pavi"}, [2] = {word = "ilion"}, [3] = {word = "edi"}, [4] = {word = "itor"}, [5] = {word = "shooey"}, [6] = {word = "opti"}, [7] = {word = "haviar"}, [8] = {word = "rochu"}}
@@ -492,7 +496,9 @@ cooldown = tonumber(GetVariable("cooldown")) or "unknown"
 items = {}
 required = 0 -- items required - sets if you try and fail
 attempts = {} -- player pedestal attempts
-attempt_words = {} -- words spoken during the current pedestal attempt
+attempt_words = {} -- correctly repeated prerequisite side words for this attempt
+attempt_candidate = nil -- any word spoken from the current side
+attempt_invalid = false -- true when prerequisite sides were skipped, repeated, or out of order
 
 
 -- Collector Case
@@ -546,7 +552,9 @@ local tmp_cards = {}
 
 function zombie_item(name, line, args, styles)
 	table.insert(items, args.item)
-	if not leader then
+	local groupLeader = get_info_leader()	
+    -- Make sure you are leader
+    if not groupLeader == gmcp("char.base.name") then
 		return
 	end
 	if args.player == "You" then
@@ -561,7 +569,9 @@ end
 
 function items_required(name, line, args)
 	required = tonumber(args.required)
-	if not leader then
+	local groupLeader = get_info_leader()	
+    -- Make sure you are leader
+    if not groupLeader == gmcp("char.base.name") then
 		return
 	end
 	if required > #items then
@@ -628,7 +638,9 @@ function start_time()
 end
 
 function end_time()
-	if not leader then
+	local groupLeader = get_info_leader()	
+    -- Make sure you are leader
+    if not groupLeader == gmcp("char.base.name") then
 		return
 	end
 	local msg = chan.."@Y>> @x075Winds of Fate @Y>> @wFinished in @W"..total_time(os.time() - start, true).."@w.$C"
@@ -867,6 +879,8 @@ end
 function player_pedestal(name, line, args)
 	player = args.player
 	attempt_words = {}
+	attempt_candidate = nil
+	attempt_invalid = false
 	player_attempt(player)
 	if cmd ~= "" then
 		ColourNote("#FBFF00", "", "\n >> ", "#9AC7FE", "", "Winds of Fate", "white", "", " cmd ", "silver", "", " cleared out because ", "white", "", player, "silver", "", " used it.\n")
@@ -876,13 +890,64 @@ function player_pedestal(name, line, args)
 	--SetTriggerOption("player_says", "match", match)
 end
 
+function word_side_number(test_word)
+	test_word = string.lower(test_word or "")
+	for i = 1, 4 do
+		local t = _G["side"..i]
+		for _, v in ipairs(t) do
+			if string.lower(v.word) == test_word then
+				return i
+			end
+		end
+	end
+	return nil
+end
+
 function player_says(name, line, args)
 	word = string.lower(args.word)
-	table.insert(attempt_words, word)
+	local spoken_side = word_side_number(word)
+
+	-- Ignore ordinary conversation. Only Winds words belong to the attempt.
+	if not spoken_side then
+		return
+	end
+
+	-- Previous solved sides must be repeated in side order using their
+	-- accepted words. Track only those prerequisites here.
+	if spoken_side < side then
+		local expected_side = #attempt_words + 1
+		local expected_word = accepted_word_for_side(expected_side)
+
+		if spoken_side ~= expected_side or not expected_word or word ~= expected_word then
+			attempt_invalid = true
+			return
+		end
+
+		table.insert(attempt_words, { word = word, side = spoken_side })
+		return
+	end
+
+	-- Once every prerequisite has been repeated correctly, ANY word from
+	-- the current side may be used as the candidate. Its position within the
+	-- side's word list does not matter.
+	if spoken_side == side then
+		if #attempt_words ~= side - 1 or attempt_candidate then
+			attempt_invalid = true
+			return
+		end
+
+		attempt_candidate = word
+		return
+	end
+
+	-- A word from a future side was spoken before the current side was solved.
+	attempt_invalid = true
 end
 
 function rename_group()
-	if not leader then
+	local groupLeader = get_info_leader()	
+    -- Make sure you are leader
+    if not groupLeader == gmcp("char.base.name") then
 		return
 	end
 	local g = ""
@@ -915,98 +980,106 @@ function accepted_word_for_side(s)
 	return nil
 end
 
--- A result from the obelisk only applies when the player said all previously
--- solved side words in order immediately before the word being tested.
-function attempt_has_required_prefix(test_side)
-	if test_side <= 1 then
-		return true
-	end
-
-	if #attempt_words < test_side then
+-- Verify that the attempt contains every side exactly once and in order.
+-- Previous sides must be their accepted words; the final word may be any
+-- candidate belonging to the current side.
+function valid_complete_attempt(current_side)
+	if attempt_invalid or #attempt_words ~= current_side - 1 then
 		return false
 	end
 
-	local start_at = #attempt_words - test_side + 1
-	for s = 1, test_side - 1 do
-		local expected = accepted_word_for_side(s)
-		local actual = attempt_words[start_at + s - 1]
-		if not expected or not actual or string.lower(actual) ~= expected then
+	for i = 1, current_side - 1 do
+		local spoken = attempt_words[i]
+		local expected = accepted_word_for_side(i)
+		if not spoken or spoken.side ~= i or not expected or spoken.word ~= expected then
 			return false
 		end
 	end
 
-	return true
+	return attempt_candidate ~= nil and word_side_number(attempt_candidate) == current_side
 end
 
 function say_result(name, line, args)
 	local rslt
-	if args.portal == "portal" then
-		-- all done, guessed 4th word
-		--SetTriggerOption("player_says", "match", "this is set by function")
-		if sitter then
-			Send(chan.."@Y>> @x075Winds of Fate @Y>> @Wside@D[@x0754@D] @Wis @G"..word.."$C")
-			side = 4
-			Send(chan.."@Y>> @x075Winds of Fate @Y>> @WObelisk sides done!$C")
-		end
-		room_info.zone = "" -- let it rename group by fudging last zone
-		init_winds()
-		return
-	elseif args.different == "different" then
+	if args.different == "different" then
 		rslt = 1
 	elseif args.bolt == "bolt" then
 		rslt = 0
 	end
-	for i = 1, 4 do
-		local t = _G["side"..i]
-		for k, v in ipairs(t) do
-			if v.word == word then
-				local show = false
-				if not v.result then
-					show = true
-				end
-				local valid_sequence = attempt_has_required_prefix(i)
-				if not valid_sequence then
-					if sitter then
-						Send(chan.."@Y>> @x075Winds of Fate @Y>> @wIgnoring the result for @W"..word.."@w because the earlier side words were skipped or spoken out of order.$C")
-						report(side)
-						go_try()
-					end
-					return
-				end
 
-				if side == i then -- only set a result when this is the side currently being tested
-					v.result = rslt
-				else
-					if sitter then
-						Send(chan.."@Y>> @x075Winds of Fate @Y>> @wNot setting result for @W"..word.."@w because it is not on @Wside@D[@x075"..side.."@D]@w.$C")
-						report(side)
-						go_try()
-					end
-					return
+	local spoken_side = word_side_number(word)
+
+	-- Results caused by repeating solved sides are prerequisites, not new
+	-- guesses. Leave their stored results alone.
+	if spoken_side and spoken_side < side then
+		return
+	end
+
+	-- A later side spoken early, a skipped side, or the wrong order makes the
+	-- obelisk response unusable. Never scratch a word from such an attempt.
+	if not spoken_side or spoken_side ~= side or not valid_complete_attempt(side) then
+		if sitter then
+			Send(chan.."@Y>> @x075Winds of Fate @Y>> @wIgnoring the result for @W"..word.."@w because every side must be spoken once, in order, before the current-side guess.$C")
+			report(side)
+			go_try()
+		end
+		return
+	end
+
+	local t = _G["side"..side]
+	for _, v in ipairs(t) do
+		if string.lower(v.word) == word then
+			local show = (v.result == nil)
+
+			-- A portal means the correctly ordered side-4 sequence succeeded.
+			if args.portal == "portal" then
+				v.result = 1
+				if sitter then
+					Send(chan.."@Y>> @x075Winds of Fate @Y>> @Wside@D[@x0754@D] @Wis @G"..word.."$C")
+					Send(chan.."@Y>> @x075Winds of Fate @Y>> @WObelisk sides done!$C")
 				end
-				if rslt == 1 then
-					side = i+1
-					if sitter then
-						if not show then
-							return
-						end
-						Send(chan.."@Y>> @x075Winds of Fate @Y>> @Wside@D[@x075"..i.."@D] @Wis @G"..word.."$C")
-						rename_group()
-						report(side)
-					end
-				else
-					if sitter then
-						if not show then
-							return
-						end
-						report(side)
-						go_try()
-					end
-				end
+				room_info.zone = ""
+				init_winds()
 				return
 			end
+
+			v.result = rslt
+			if rslt == 1 then
+				local solved_side = side
+				side = side + 1
+
+				-- The player may continue guessing the next side without stepping
+				-- off the pedestal. Preserve all newly confirmed prerequisite
+				-- sides, but clear the old candidate/result state.
+				attempt_words = {}
+				for solved = 1, side - 1 do
+					local accepted = accepted_word_for_side(solved)
+					if accepted then
+						table.insert(attempt_words, { word = accepted, side = solved })
+					end
+				end
+				attempt_candidate = nil
+				attempt_invalid = false
+
+				if sitter and show then
+					Send(chan.."@Y>> @x075Winds of Fate @Y>> @Wside@D[@x075"..solved_side.."@D] @Wis @G"..word.."$C")
+					rename_group()
+					report(side)
+				end
+			elseif sitter and show then
+				report(side)
+				go_try()
+			end
+
+			-- The obelisk has answered this candidate. Do not let it leak into
+			-- the next spoken word during the same pedestal session.
+			if rslt ~= 1 then
+				attempt_candidate = nil
+			end
+			return
 		end
 	end
+
 	if sitter then
 		Send(chan.."@Y>> @x075Winds of Fate @Y>> @WInvalid word submitted: @R"..word.."$C")
 		report(side)
