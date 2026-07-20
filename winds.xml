@@ -18,7 +18,7 @@ commentz
    purpose="Winds epic stuff."
    date_written="2018-01-24 20:02:50"
    requires="4.30"
-   version="1.50"
+   version="1.51"
    save_state="y"
    >
 <description trim="n">
@@ -904,43 +904,47 @@ function word_side_number(test_word)
 end
 
 function player_says(name, line, args)
+	-- Only track words spoken by the person currently on the pedestal.
+	local speaker = string.lower(args.player or "")
+	local pedestal_player = string.lower(player or "")
+	if speaker ~= "you" and speaker ~= pedestal_player then
+		return
+	end
+
 	word = string.lower(args.word)
 	local spoken_side = word_side_number(word)
 
-	-- Ignore ordinary conversation. Only Winds words belong to the attempt.
+	-- Ignore ordinary conversation.
 	if not spoken_side then
 		return
 	end
 
-	-- Previous solved sides must be repeated in side order using their
-	-- accepted words. Track only those prerequisites here.
+	-- Previously solved sides are required prerequisites. Accept them silently
+	-- only when they are spoken in side order and match the accepted word.
 	if spoken_side < side then
 		local expected_side = #attempt_words + 1
 		local expected_word = accepted_word_for_side(expected_side)
 
-		if spoken_side ~= expected_side or not expected_word or word ~= expected_word then
+		if spoken_side == expected_side and expected_word and word == expected_word then
+			table.insert(attempt_words, { word = word, side = spoken_side })
+		else
 			attempt_invalid = true
-			return
 		end
-
-		table.insert(attempt_words, { word = word, side = spoken_side })
 		return
 	end
 
-	-- Once every prerequisite has been repeated correctly, ANY word from
-	-- the current side may be used as the candidate. Its position within the
-	-- side's word list does not matter.
+	-- The current side may use ANY word from that side once all prior solved
+	-- sides have been repeated correctly.
 	if spoken_side == side then
-		if #attempt_words ~= side - 1 or attempt_candidate then
+		if #attempt_words == side - 1 and not attempt_candidate then
+			attempt_candidate = word
+		else
 			attempt_invalid = true
-			return
 		end
-
-		attempt_candidate = word
 		return
 	end
 
-	-- A word from a future side was spoken before the current side was solved.
+	-- Future-side words are always out of order.
 	attempt_invalid = true
 end
 
@@ -980,6 +984,20 @@ function accepted_word_for_side(s)
 	return nil
 end
 
+-- Restore a clean attempt for the current side while preserving every side
+-- already solved during this pedestal session.
+function reset_attempt_for_current_side()
+	attempt_words = {}
+	for solved = 1, side - 1 do
+		local accepted = accepted_word_for_side(solved)
+		if accepted then
+			table.insert(attempt_words, { word = accepted, side = solved })
+		end
+	end
+	attempt_candidate = nil
+	attempt_invalid = false
+end
+
 -- Verify that the attempt contains every side exactly once and in order.
 -- Previous sides must be their accepted words; the final word may be any
 -- candidate belonging to the current side.
@@ -1009,20 +1027,25 @@ function say_result(name, line, args)
 
 	local spoken_side = word_side_number(word)
 
-	-- Results caused by repeating solved sides are prerequisites, not new
-	-- guesses. Leave their stored results alone.
-	if spoken_side and spoken_side < side then
+	-- Correct prerequisite words from solved sides are ignored by result
+	-- processing. They are only used to establish the required sequence.
+	if spoken_side and spoken_side < side and not attempt_invalid then
 		return
 	end
 
-	-- A later side spoken early, a skipped side, or the wrong order makes the
-	-- obelisk response unusable. Never scratch a word from such an attempt.
+	-- Any broken prerequisite sequence, skipped side, duplicate candidate, or
+	-- future-side word is a failed attempt. Rebuild cmd immediately.
 	if not spoken_side or spoken_side ~= side or not valid_complete_attempt(side) then
 		if sitter then
-			Send(chan.."@Y>> @x075Winds of Fate @Y>> @wIgnoring the result for @W"..word.."@w because every side must be spoken once, in order, before the current-side guess.$C")
+			local reason = "the prerequisite sides were missing or out of order"
+			if spoken_side and spoken_side > side then
+				reason = "a future side was guessed before the current side"
+			end
+			Send(chan.."@Y>> @x075Winds of Fate @Y>> @RFailed attempt: @W"..word.."@w — "..reason..". Reloading the current command.$C")
 			report(side)
-			go_try()
 		end
+		reset_attempt_for_current_side()
+		go_try()
 		return
 	end
 
@@ -1051,30 +1074,26 @@ function say_result(name, line, args)
 				-- The player may continue guessing the next side without stepping
 				-- off the pedestal. Preserve all newly confirmed prerequisite
 				-- sides, but clear the old candidate/result state.
-				attempt_words = {}
-				for solved = 1, side - 1 do
-					local accepted = accepted_word_for_side(solved)
-					if accepted then
-						table.insert(attempt_words, { word = accepted, side = solved })
-					end
-				end
-				attempt_candidate = nil
-				attempt_invalid = false
+				reset_attempt_for_current_side()
 
 				if sitter and show then
 					Send(chan.."@Y>> @x075Winds of Fate @Y>> @Wside@D[@x075"..solved_side.."@D] @Wis @G"..word.."$C")
 					rename_group()
 					report(side)
 				end
+				-- Always publish a fresh command after advancing a side, even when
+				-- the same player remains on the pedestal and continues guessing.
+				go_try()
 			elseif sitter and show then
 				report(side)
 				go_try()
 			end
 
-			-- The obelisk has answered this candidate. Do not let it leak into
-			-- the next spoken word during the same pedestal session.
+			-- The obelisk has answered this candidate. Restore a clean current-side
+			-- attempt so the next candidate, including the first word in the list,
+			-- is evaluated independently.
 			if rslt ~= 1 then
-				attempt_candidate = nil
+				reset_attempt_for_current_side()
 			end
 			return
 		end
