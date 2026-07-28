@@ -18,7 +18,7 @@ commentz
    purpose="Winds epic stuff."
    date_written="2018-01-24 20:02:50"
    requires="4.30"
-   version="1.52"
+   version="1.53"
    save_state="y"
    >
 <description trim="n">
@@ -349,8 +349,7 @@ commentz
    group="triggers"
   >
   </trigger>
-  </trigger>
-   <trigger
+  <trigger
    enabled="y"
    match="^Lord Orittias, the Betrayer exclaims 'I have had enough of this charade! Observe my AUTHORITY!!'$"
    regexp="y"
